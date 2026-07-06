@@ -168,7 +168,7 @@ npm run crawl:all -- --limit=3
 }
 ```
 
-部署到 Vercel 后，配置 `CRON_SECRET`。Cron 请求会调用 `/api/cron/crawl`，分批抓取 active 产品，并为单个产品失败保留错误日志。
+部署到 Vercel 后，配置 `CRON_SECRET`。Cron 请求会调用 `/api/cron/crawl`，分批抓取 active 产品，并为单个产品失败保留错误日志。响应会包含 `processed`、`skippedDueToCooldown`、`cooldownHours` 和逐产品 `results`，用于确认本批执行和冷却跳过情况。
 
 ## 前端页面
 

@@ -67,6 +67,11 @@
    - HTTP 成功但静态 HTML 没有有效文本，或页面提示需要 JavaScript 时，抓取器会尝试 Playwright 渲染
    - fallback 失败时保留原始 HTTP fetch 结果，并把失败原因写入 `errorMessage`
    - 可选环境变量：`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`
+14. Cron route 测试和可观测性：
+   - `src/app/api/cron/crawl/route.test.ts`
+   - 覆盖 `CRON_SECRET` 拒绝未授权请求
+   - 覆盖冷却时间跳过、单个产品抓取失败不阻断后续产品
+   - `/api/cron/crawl` 响应新增 `skippedDueToCooldown`
 
 ## 当前验证结果
 
@@ -82,8 +87,8 @@ npm run build
 最近测试结果：
 
 ```text
-Test Files  14 passed (14)
-Tests       35 passed (35)
+Test Files  15 passed (15)
+Tests       37 passed (37)
 ```
 
 当前新增验证：

@@ -41,13 +41,12 @@ async function runCronBatch(request: Request) {
       }
     }
   });
-  const selected = candidates
-    .filter((product) => {
-      const [latestJob] = product.crawlJobs;
-      const latestStartedAt = latestJob?.startedAt ?? latestJob?.createdAt;
-      return !latestStartedAt || latestStartedAt < cooldownCutoff;
-    })
-    .slice(0, limit);
+  const eligible = candidates.filter((product) => {
+    const [latestJob] = product.crawlJobs;
+    const latestStartedAt = latestJob?.startedAt ?? latestJob?.createdAt;
+    return !latestStartedAt || latestStartedAt < cooldownCutoff;
+  });
+  const selected = eligible.slice(0, limit);
   const repository = createPrismaCrawlRepository(prisma);
   const results = [];
 
@@ -69,6 +68,7 @@ async function runCronBatch(request: Request) {
 
   return NextResponse.json({
     processed: results.length,
+    skippedDueToCooldown: candidates.length - eligible.length,
     cooldownHours,
     results
   });
