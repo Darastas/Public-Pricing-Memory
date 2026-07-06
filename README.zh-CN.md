@@ -11,10 +11,21 @@ Public Pricing Memory 是一个公开的价格记忆系统，用来长期追踪 
 - 在公开前端中搜索产品、查看历史、比较快照。
 - 为后续截图存储、对象存储、订阅和 feed 留出扩展边界。
 
+## 价格数据来源
+
+项目现在同时展示两类价格数据，但保持边界清楚：
+
+- Crawler 快照：由抓取器访问公开价格页后生成 `Snapshot`、`PricingPlan` 和 `ChangeEvent`，用于长期追踪历史变化。
+- 官方价格目录：人工维护的官方来源参考价，覆盖 OpenAI、Anthropic、DeepSeek、智谱 GLM、Kimi、Google Gemini、xAI、Mistral、Cohere、Together AI、Groq、Perplexity、百度千帆、阿里通义、腾讯混元、讯飞星火、MiniMax、零一万物、阶跃星辰、硅基流动，以及 Spotify、YouTube Premium、Netflix、Disney+、Apple One、Amazon Prime、Notion、GitHub、Cursor、ChatGPT、Claude 等首批产品。
+
+官方价格目录会记录来源 URL、地区、币种、状态、最后检查日期和可信度。未能从官方页面稳定确认的价格会标记为 `needs_review` 或 `not_published`，不会使用第三方聚合价格、汇率换算或伪造的 0 价格。
+
+界面支持 `?lang=en` 和 `?lang=zh`，顶部语言切换器可以在英文和中文之间切换。
+
 ## 功能概览
 
-- 首页 `/`：产品搜索、近期变化、追踪产品列表、抓取状态和提交新产品入口。
-- 产品页 `/products/[slug]`：产品信息、当前套餐、历史快照、变化时间线和对比入口。
+- 首页 `/`：产品搜索、官方价格目录、近期变化、追踪产品列表、抓取状态和提交新产品入口。
+- 产品页 `/products/[slug]`：产品信息、当前套餐、官方价格参考、历史快照、变化时间线和对比入口。
 - 对比页 `/products/[slug]/compare?from=&to=`：规范化文本 diff、价格变化和套餐变化摘要。
 - 管理页 `/admin`：新增产品、手动抓取、查看抓取日志、重新提取某个快照。
 - API：产品、变化、快照、对比、手动抓取和 cron 抓取接口。
@@ -151,16 +162,12 @@ npm run db:seed
 
 ## Seed 产品
 
-初始产品配置在 `src/config/seed-products.ts`，当前包含：
+初始产品配置在 `src/config/seed-products.ts`。除了原有 OpenAI、Anthropic、GitHub、Vercel、Supabase、Cursor、Notion、Slack，也会从官方价格目录自动补齐首批 AI/API/订阅平台产品，例如：
 
-- OpenAI
-- Anthropic
-- GitHub
-- Vercel
-- Supabase
-- Cursor
-- Notion
-- Slack
+- DeepSeek、智谱 GLM、Kimi、Google Gemini、xAI、Mistral、Cohere、Together AI、Groq、Perplexity
+- 百度千帆、阿里通义、腾讯混元、讯飞星火、MiniMax、零一万物、阶跃星辰、硅基流动
+- Spotify、YouTube Premium、Netflix、Disney+、Apple One、Amazon Prime
+- ChatGPT、Claude、GitHub、Notion、Cursor
 
 这些 URL 是配置化数据，不写死在 UI 里。
 

@@ -9,19 +9,25 @@ import {
   Layers,
   Link as LinkIcon
 } from "lucide-react";
+import { CatalogPriceList } from "@/components/catalog-price-list";
 import { serializePricingPlan } from "@/lib/api/serialize";
 import { seedProducts } from "@/config/seed-products";
+import { dictionary, getLocale, withLocaleHref } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime, formatPrice, severityLabel } from "@/lib/ui/format";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProductPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ lang?: string | string[] }>;
 }) {
   const { slug } = await params;
+  const locale = getLocale(await searchParams);
+  const t = dictionary[locale];
   const { product, databaseError } = await loadProduct(slug);
 
   if (!product) {
@@ -57,32 +63,32 @@ export default async function ProductPage({
             </div>
           </div>
           <div className="grid min-w-[240px] gap-2">
-            <StatusLine label="Latest crawl" value={formatDateTime(latestSnapshot?.fetchedAt)} />
+            <StatusLine label={t.latestCrawl} value={formatDateTime(latestSnapshot?.fetchedAt)} />
             <StatusLine
-              label="Extraction"
+              label={t.extraction}
               value={latestSnapshot?.extractionStatus ?? "not crawled"}
             />
             <StatusLine
-              label="HTTP status"
+              label={t.httpStatus}
               value={latestSnapshot?.httpStatus?.toString() ?? "none"}
             />
           </div>
         </div>
         <div className="mt-5 flex flex-wrap gap-3">
           {compareHref ? (
-            <Link className="button button-primary" href={compareHref}>
+            <Link className="button button-primary" href={withLocaleHref(compareHref, locale)}>
               <GitCompareArrows size={16} />
-              Compare latest
+              {t.compareLatest}
             </Link>
           ) : null}
           {latestSnapshot ? (
             <Link className="button button-secondary" href={`/api/snapshots/${latestSnapshot.id}`}>
               <FileText size={16} />
-              Raw snapshot JSON
+              {t.rawSnapshotJson}
             </Link>
           ) : null}
-          <Link className="button button-secondary" href="/admin">
-            Trigger crawl
+          <Link className="button button-secondary" href={withLocaleHref("/admin", locale)}>
+            {locale === "zh" ? "触发抓取" : "Trigger crawl"}
             <ArrowRight size={16} />
           </Link>
         </div>
@@ -90,7 +96,7 @@ export default async function ProductPage({
 
       {databaseError ? (
         <section className="mt-5 rounded-[8px] border border-[rgba(168,102,20,0.25)] bg-[rgba(168,102,20,0.08)] p-4 text-sm text-[var(--amber)]">
-          Database unavailable: showing seed product metadata without snapshots.
+          {t.databaseUnavailableProduct}
           {` ${databaseError}`}
         </section>
       ) : null}
@@ -98,10 +104,10 @@ export default async function ProductPage({
       <section className="mt-5 grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="panel p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-[800]">Current plans</h2>
+            <h2 className="text-xl font-[800]">{t.currentPlans}</h2>
             <span className="badge">
               <Layers size={14} />
-              {currentPlans.length} detected
+              {currentPlans.length} {t.detected}
             </span>
           </div>
           <div className="mt-5 grid gap-3">
@@ -112,7 +118,7 @@ export default async function ProductPage({
                     <div>
                       <h3 className="text-lg font-[780]">{plan.name}</h3>
                       <p className="mt-1 text-sm text-[var(--muted)]">
-                        {plan.isFreeTier ? "Free tier detected" : "Paid or custom tier"}
+                        {plan.isFreeTier ? t.freeTierDetected : t.paidOrCustomTier}
                       </p>
                     </div>
                     <span className="text-xl font-[820]">{formatPrice(plan)}</span>
@@ -127,17 +133,24 @@ export default async function ProductPage({
                 </article>
               ))
             ) : (
-              <EmptyState title="No plans extracted" detail="Run a successful crawl to populate current plans." />
+              <EmptyState
+                title={t.noPlansExtracted}
+                detail={
+                  locale === "zh"
+                    ? "成功抓取后会填充当前套餐。"
+                    : "Run a successful crawl to populate current plans."
+                }
+              />
             )}
           </div>
         </div>
 
         <div className="panel p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-[800]">Change timeline</h2>
+            <h2 className="text-xl font-[800]">{t.changeTimeline}</h2>
             <span className="badge">
               <History size={14} />
-              {product.changes.length} events
+              {product.changes.length} {locale === "zh" ? "事件" : "events"}
             </span>
           </div>
           <div className="timeline-line mt-5 grid gap-4">
@@ -162,23 +175,25 @@ export default async function ProductPage({
                 </div>
               ))
             ) : (
-              <EmptyState title="No change events" detail="The first crawl will create a baseline event." />
+              <EmptyState title={t.noChangeEvents} detail={t.firstCrawlBaseline} />
             )}
           </div>
         </div>
       </section>
 
+      <CatalogPriceList productSlug={product.slug} locale={locale} />
+
       <section className="mt-5 panel overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] p-5 sm:p-6">
           <div>
-            <h2 className="text-xl font-[800]">Historical snapshots</h2>
+            <h2 className="text-xl font-[800]">{t.historicalSnapshots}</h2>
             <p className="mt-1 text-sm text-[var(--muted)]">
-              Each row keeps normalized text, extracted plans, and raw HTML when stored.
+              {t.historicalSnapshotsDetail}
             </p>
           </div>
           {compareHref ? (
-            <Link className="button button-secondary" href={compareHref}>
-              Compare newest pair
+            <Link className="button button-secondary" href={withLocaleHref(compareHref, locale)}>
+              {t.compareNewestPair}
               <GitCompareArrows size={16} />
             </Link>
           ) : null}
@@ -186,11 +201,11 @@ export default async function ProductPage({
         <table className="data-table">
           <thead>
             <tr>
-              <th>Fetched</th>
-              <th>Status</th>
-              <th>Hash</th>
-              <th>Plans</th>
-              <th>Raw text</th>
+              <th>{t.fetched}</th>
+              <th>{t.status}</th>
+              <th>{t.hash}</th>
+              <th>{t.currentPlans}</th>
+              <th>{t.rawText}</th>
             </tr>
           </thead>
           <tbody>
@@ -220,7 +235,7 @@ export default async function ProductPage({
                   <td>
                     <Link className="button button-secondary" href={`/api/snapshots/${snapshot.id}`}>
                       <FileText size={15} />
-                      View
+                      {locale === "zh" ? "查看" : "View"}
                     </Link>
                   </td>
                 </tr>
@@ -228,7 +243,10 @@ export default async function ProductPage({
             ) : (
               <tr>
                 <td colSpan={5}>
-                  <EmptyState title="No snapshots yet" detail="Trigger a crawl from the admin page." />
+                  <EmptyState
+                    title={locale === "zh" ? "暂无快照" : "No snapshots yet"}
+                    detail={locale === "zh" ? "从管理页触发一次抓取。" : "Trigger a crawl from the admin page."}
+                  />
                 </td>
               </tr>
             )}
@@ -238,9 +256,9 @@ export default async function ProductPage({
 
       {latestSnapshot ? (
         <section className="mt-5 panel p-5 sm:p-6">
-          <h2 className="text-xl font-[800]">Normalized text preview</h2>
+          <h2 className="text-xl font-[800]">{t.normalizedTextPreview}</h2>
           <pre className="mt-4 max-h-[360px] overflow-auto rounded-[8px] border border-[var(--border)] bg-[#111816] p-4 text-xs leading-6 text-[#d9e7e1]">
-            {latestSnapshot.normalizedText || "No normalized text available."}
+            {latestSnapshot.normalizedText || t.noNormalizedText}
           </pre>
         </section>
       ) : null}
