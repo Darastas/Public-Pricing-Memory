@@ -38,6 +38,23 @@ describe("HTML normalization", () => {
     expect(text).toContain("10 个席位");
   });
 
+  it("preserves markdown and MDX pricing table source instead of treating it as HTML", () => {
+    const text = htmlToNormalizedText(
+      [
+        "# 编程模型 Kimi K2.7 Code 定价",
+        "<DocTable",
+        "rows={[",
+        '["kimi-k2.7-code", "1M tokens", "¥1.30", "¥6.50", "¥27.00"],',
+        "]}",
+        "/>"
+      ].join("\n")
+    );
+
+    expect(text).toContain("kimi-k2.7-code");
+    expect(text).toContain("¥6.50");
+    expect(text).not.toBe("{column.title}\n{cell}");
+  });
+
   it("generates stable hashes for equivalent whitespace", () => {
     expect(createContentHash("Pro\n$20/mo")).toBe(
       createContentHash("  Pro   $20/mo  ")

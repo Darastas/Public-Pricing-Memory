@@ -74,4 +74,55 @@ describe("pricing extraction", () => {
       }
     ]);
   });
+
+  it("extracts API model rows from model pricing text", () => {
+    const plans = extractPricingPlans(
+      [
+        "### Grok 4.3",
+        "grok-4.3",
+        "Input $1.25 / 1M tokens",
+        "Output $2.50 / 1M tokens",
+        "### Voice API",
+        "Agent $3.00 / hour"
+      ].join("\n")
+    );
+
+    expect(plans.find((plan) => plan.name === "Grok 4.3")).toMatchObject({
+      priceAmount: 1.25,
+      priceCurrency: "USD",
+      rawPriceText: "$1.25 / 1M tokens"
+    });
+  });
+
+  it("extracts Chinese yuan suffix prices from model pricing text", () => {
+    const mentions = extractPriceMentions("step-3.7-flash 1M tokens 输入价格 1.35元 输出价格 8.1元");
+
+    expect(mentions).toEqual([
+      {
+        amount: 1.35,
+        currency: "CNY",
+        raw: "1.35元"
+      },
+      {
+        amount: 8.1,
+        currency: "CNY",
+        raw: "8.1元"
+      }
+    ]);
+  });
+
+  it("extracts model rows from MDX table array source", () => {
+    const plans = extractPricingPlans(
+      [
+        "## 产品定价",
+        '["kimi-k2.7-code", "1M tokens", "¥1.30", "¥6.50", "¥27.00", "262,144 tokens"]'
+      ].join("\n")
+    );
+
+    expect(plans.find((plan) => plan.name === "kimi-k2.7-code")).toMatchObject({
+      priceAmount: 1.3,
+      priceCurrency: "CNY",
+      rawPriceText: "¥1.30"
+    });
+  });
 });

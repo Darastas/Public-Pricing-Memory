@@ -41,6 +41,14 @@ export function normalizeText(input: string): string {
 }
 
 export function htmlToNormalizedText(html: string): string {
+  if (looksLikeMarkdownOrMdx(html)) {
+    return normalizeText(html);
+  }
+
+  if (!looksLikeHtml(html)) {
+    return normalizeText(html);
+  }
+
   const $ = cheerio.load(html);
 
   $(NOISE_SELECTORS.join(",")).remove();
@@ -76,4 +84,23 @@ function dedupeAdjacent(lines: string[]): string[] {
     }
   }
   return output;
+}
+
+function looksLikeHtml(input: string): boolean {
+  return /<(?:!doctype|html|head|body|main|section|article|div|table|tr|td|p|h[1-6]|span|a|ul|ol|li)\b/i.test(
+    input
+  );
+}
+
+function looksLikeMarkdownOrMdx(input: string): boolean {
+  if (/<(?:!doctype|html|body)\b/i.test(input)) {
+    return false;
+  }
+
+  const trimmed = input.trimStart();
+  return (
+    /^[#>]/.test(trimmed) ||
+    /(?:^|\n)export\s+const\s+\w+/.test(input) ||
+    /<DocTable\b|rows=\{\[/.test(input)
+  );
 }

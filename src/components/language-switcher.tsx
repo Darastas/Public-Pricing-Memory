@@ -6,7 +6,7 @@ import { Languages } from "lucide-react";
 import { withLocaleHref, type Locale } from "@/lib/i18n";
 
 const languages: { locale: Locale; label: string }[] = [
-  { locale: "en", label: "EN" },
+  { locale: "en", label: "English" },
   { locale: "zh", label: "中文" }
 ];
 

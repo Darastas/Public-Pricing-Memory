@@ -75,6 +75,7 @@ export default async function Home({
             <input name="lang" type="hidden" value={locale} />
             <label className="relative flex-1">
               <Search
+                aria-hidden="true"
                 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
                 size={17}
               />
@@ -410,8 +411,8 @@ export default async function Home({
                         <td>
                           <div className="badge-row max-w-[360px]">
                             {plans.length ? (
-                              plans.slice(0, 4).map((plan) => (
-                                <span className="badge" key={plan.name}>
+                              plans.slice(0, 4).map((plan, planIndex) => (
+                                <span className="badge" key={plan.id ?? `${product.id}-${plan.name}-${planIndex}`}>
                                   {plan.name}: {formatPrice(plan)}
                                 </span>
                               ))

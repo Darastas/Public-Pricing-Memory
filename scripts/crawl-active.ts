@@ -3,9 +3,9 @@ import { fetchPricingPage } from "../src/lib/crawler/fetcher";
 import { createPrismaCrawlRepository } from "../src/lib/crawler/prisma-repository";
 import { runCrawl } from "../src/lib/crawler/run-crawl";
 import { prisma } from "../src/lib/prisma";
+import { parseCrawlLimit } from "../src/scripts/crawl-active-config";
 
-const limitArg = process.argv.find((arg) => arg.startsWith("--limit="));
-const limit = clamp(Number(limitArg?.split("=")[1] ?? 3), 1, 20);
+const limit = parseCrawlLimit(process.argv);
 const repository = createPrismaCrawlRepository(prisma);
 
 async function main() {
@@ -37,11 +37,6 @@ async function main() {
       );
     }
   }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) return min;
-  return Math.max(min, Math.min(max, Math.floor(value)));
 }
 
 main()

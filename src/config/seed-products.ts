@@ -84,9 +84,7 @@ function mergeSeedProducts(products: SeedProduct[]): SeedProduct[] {
   const bySlug = new Map<string, SeedProduct>();
 
   for (const product of products) {
-    if (!bySlug.has(product.slug)) {
-      bySlug.set(product.slug, product);
-    }
+    bySlug.set(product.slug, product);
   }
 
   return Array.from(bySlug.values());

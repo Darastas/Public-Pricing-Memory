@@ -44,6 +44,9 @@ export const dictionary = {
     noProductsYet: "No products yet",
     normalizedTextPreview: "Normalized text preview",
     officialPricingReferences: "Official pricing references",
+    officialPricingFallback: "Official source fallback",
+    officialPricingFallbackDetail:
+      "Crawler extraction did not find plans in the latest snapshot, so these rows come from the curated official catalog.",
     open: "Open",
     paidOrCustomTier: "Paid or custom tier",
     price: "Price",
@@ -130,6 +133,8 @@ export const dictionary = {
     noProductsYet: "暂无产品",
     normalizedTextPreview: "规范化文本预览",
     officialPricingReferences: "官方价格参考",
+    officialPricingFallback: "官方来源兜底",
+    officialPricingFallbackDetail: "最新快照没有提取到套餐，因此这里展示人工复核的官方目录价格。",
     open: "打开",
     paidOrCustomTier: "付费或自定义套餐",
     price: "价格",

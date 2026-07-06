@@ -95,11 +95,84 @@ describe("pricing catalog data", () => {
     expect(bySlug.get("openai")?.prices.map((price) => price.id)).toEqual(
       expect.arrayContaining([
         "api-gpt-5-5-standard-short",
-        "api-gpt-5-4-mini-standard-short"
+        "api-gpt-5-5-standard-long",
+        "api-gpt-5-4-standard-short",
+        "api-gpt-5-4-mini-standard-short",
+        "api-gpt-5-4-nano-standard"
       ])
     );
+    expect(
+      bySlug.get("openai")?.prices.find((price) => price.id === "api-gpt-5-5-standard-long")
+        ?.rawText
+    ).toContain("$45.00");
     expect(bySlug.get("spotify")?.prices.map((price) => price.id)).toEqual(
       expect.arrayContaining(["premium-individual-us", "premium-duo-us", "premium-family-us"])
     );
+  });
+
+  it("covers the current Anthropic API model families with official rows", () => {
+    const anthropic = catalogProducts.find((product) => product.slug === "anthropic");
+
+    expect(anthropic?.prices.map((price) => price.id)).toEqual(
+      expect.arrayContaining([
+        "api-fable-5",
+        "api-opus-4-8",
+        "api-sonnet-5",
+        "api-haiku-4-5"
+      ])
+    );
+    expect(anthropic?.prices.some((price) => price.rawText.includes("Sonnet 5 input"))).toBe(
+      false
+    );
+  });
+
+  it("publishes official prices for AI providers that have public official pricing", () => {
+    const bySlug = new Map(catalogProducts.map((product) => [product.slug, product]));
+    const reviewedSlugs = [
+      "zhipu-glm",
+      "deepseek",
+      "kimi",
+      "google-gemini",
+      "xai",
+      "together-ai",
+      "groq",
+      "perplexity",
+      "alibaba-tongyi",
+      "tencent-hunyuan",
+      "minimax",
+      "stepfun",
+      "siliconflow"
+    ];
+
+    for (const slug of reviewedSlugs) {
+      expect(bySlug.get(slug)?.prices.some((price) => price.status === "published")).toBe(true);
+      expect(bySlug.get(slug)?.prices.some((price) => price.confidence === "official")).toBe(true);
+    }
+  });
+
+  it("keeps official model price rows for corrected provider catalogs", () => {
+    const bySlug = new Map(catalogProducts.map((product) => [product.slug, product]));
+
+    expect(bySlug.get("deepseek")?.prices.map((price) => price.id)).toEqual(
+      expect.arrayContaining([
+        "api-deepseek-v4-flash-cache-miss",
+        "api-deepseek-v4-pro-cache-miss"
+      ])
+    );
+    expect(bySlug.get("groq")?.prices.find((price) => price.id === "api-gpt-oss-120b")?.rawText)
+      .toContain("$0.60");
+    expect(bySlug.get("siliconflow")?.pricingUrl).toBe("https://siliconflow.cn/pricing");
+    expect(bySlug.get("siliconflow")?.prices.map((price) => price.id)).toEqual(
+      expect.arrayContaining(["api-glm-5-2", "api-deepseek-v4-pro"])
+    );
+  });
+
+  it("does not leave generic needs-review placeholders after official review", () => {
+    for (const price of catalogProducts.flatMap((product) => product.prices)) {
+      if (price.status === "needs_review") {
+        expect(price.rawText).not.toContain("exact public price needs account");
+        expect(price.rawText.length).toBeGreaterThan(20);
+      }
+    }
   });
 });

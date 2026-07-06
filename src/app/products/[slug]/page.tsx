@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { CatalogPriceList } from "@/components/catalog-price-list";
 import { serializePricingPlan } from "@/lib/api/serialize";
+import { catalogProducts, type CatalogPrice } from "@/config/pricing-catalog";
 import { seedProducts } from "@/config/seed-products";
 import { dictionary, getLocale, withLocaleHref } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
@@ -36,6 +37,11 @@ export default async function ProductPage({
 
   const [latestSnapshot, previousSnapshot] = product.snapshots;
   const currentPlans = latestSnapshot?.pricingPlans.map(serializePricingPlan) ?? [];
+  const officialFallbackPrices =
+    catalogProducts
+      .find((catalogProduct) => catalogProduct.slug === product.slug)
+      ?.prices.filter((price) => price.status === "published")
+      .slice(0, 4) ?? [];
   const compareHref =
     latestSnapshot && previousSnapshot
       ? `/products/${product.slug}/compare?from=${previousSnapshot.id}&to=${latestSnapshot.id}`
@@ -112,8 +118,8 @@ export default async function ProductPage({
           </div>
           <div className="mt-5 grid gap-3">
             {currentPlans.length ? (
-              currentPlans.map((plan) => (
-                <article className="subtle-panel p-4" key={plan.name}>
+              currentPlans.map((plan, planIndex) => (
+                <article className="subtle-panel p-4" key={plan.id ?? `${plan.name}-${planIndex}`}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h3 className="text-lg font-[780]">{plan.name}</h3>
@@ -124,14 +130,16 @@ export default async function ProductPage({
                     <span className="text-xl font-[820]">{formatPrice(plan)}</span>
                   </div>
                   <div className="mt-4 grid gap-2 text-sm text-[var(--muted)]">
-                    {(plan.limits.length ? plan.limits : plan.features).slice(0, 4).map((line) => (
-                      <p className="rounded-[7px] bg-white px-3 py-2" key={line}>
+                    {(plan.limits.length ? plan.limits : plan.features).slice(0, 4).map((line, lineIndex) => (
+                      <p className="rounded-[7px] bg-white px-3 py-2" key={`${line}-${lineIndex}`}>
                         {line}
                       </p>
                     ))}
                   </div>
                 </article>
               ))
+            ) : officialFallbackPrices.length ? (
+              <OfficialFallbackPrices prices={officialFallbackPrices} locale={locale} />
             ) : (
               <EmptyState
                 title={t.noPlansExtracted}
@@ -263,6 +271,40 @@ export default async function ProductPage({
         </section>
       ) : null}
     </main>
+  );
+}
+
+function OfficialFallbackPrices({
+  prices,
+  locale
+}: {
+  prices: CatalogPrice[];
+  locale: "en" | "zh";
+}) {
+  const t = dictionary[locale];
+
+  return (
+    <div className="grid gap-3">
+      <div className="rounded-[8px] border border-[rgba(47,111,95,0.22)] bg-[rgba(47,111,95,0.08)] p-4">
+        <p className="font-semibold">{t.officialPricingFallback}</p>
+        <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+          {t.officialPricingFallbackDetail}
+        </p>
+      </div>
+      {prices.map((price) => (
+        <article className="subtle-panel p-4" key={price.id}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-[780]">{price.label[locale]}</h3>
+              <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
+                {price.rawText}
+              </p>
+            </div>
+            <span className="badge severity-low">{price.sourceLabel}</span>
+          </div>
+        </article>
+      ))}
+    </div>
   );
 }
 

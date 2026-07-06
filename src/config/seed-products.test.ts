@@ -15,4 +15,13 @@ describe("seed products", () => {
     const slugs = seedProducts.map((product) => product.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
   });
+
+  it("lets catalog products refresh legacy base pricing URLs", () => {
+    const seedBySlug = new Map(seedProducts.map((product) => [product.slug, product]));
+    const catalogBySlug = new Map(catalogProducts.map((product) => [product.slug, product]));
+
+    expect(seedBySlug.get("openai")?.pricingUrl).toBe(
+      catalogBySlug.get("openai")?.pricingUrl
+    );
+  });
 });

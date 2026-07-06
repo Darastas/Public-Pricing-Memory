@@ -45,7 +45,7 @@ export function createFetchPage(options: {
         signal: controller.signal,
         redirect: "follow",
         headers: {
-          accept: "text/html,application/xhtml+xml",
+          accept: acceptHeaderForUrl(url),
           "user-agent": userAgent
         }
       });
@@ -120,7 +120,7 @@ function shouldUseRenderedFallback(
   minStaticTextLength: number
 ): boolean {
   if (!isReachable(result.httpStatus)) {
-    return false;
+    return true;
   }
 
   const normalizedText = result.html ? htmlToNormalizedText(result.html) : "";
@@ -142,4 +142,19 @@ function appendErrorMessage(
   addition: string
 ): string {
   return current ? `${current}; ${addition}` : addition;
+}
+
+function acceptHeaderForUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    if (parsed.pathname.toLowerCase().endsWith(".md")) {
+      return "text/markdown,text/plain;q=0.9,text/html;q=0.8,application/xhtml+xml;q=0.7";
+    }
+  } catch {
+    if (url.toLowerCase().endsWith(".md")) {
+      return "text/markdown,text/plain;q=0.9,text/html;q=0.8,application/xhtml+xml;q=0.7";
+    }
+  }
+
+  return "text/html,application/xhtml+xml";
 }

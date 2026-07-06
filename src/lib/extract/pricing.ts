@@ -45,8 +45,18 @@ const LIMIT_PATTERN =
 const FEATURE_GATE_PATTERN =
   /(support|sso|audit|permission|role|feature|功能|权限|支持|日志|审计)/i;
 
-const PRICE_PATTERN =
-  /([$€£¥])\s*([\d,]+(?:\.\d+)?)\s*(?:(?:\/\s*|\s+per\s+)(month|mo|year|yr)|(?:每\s*(月|年)|每月|每年))?/gi;
+const PRICE_UNIT_PATTERN =
+  "month|mo|year|yr|1m\\s+tokens?|m\\s+tokens?|million\\s+tokens?|mtok|hour|hr";
+
+const SYMBOL_PRICE_PATTERN = new RegExp(
+  `([$€£¥])\\s*([\\d,]+(?:\\.\\d+)?)\\s*(?:(?:\\/\\s*|\\s+per\\s+)(${PRICE_UNIT_PATTERN})|(?:每\\s*(月|年)|每月|每年))?`,
+  "gi"
+);
+
+const CNY_SUFFIX_PRICE_PATTERN = new RegExp(
+  `([\\d,]+(?:\\.\\d+)?)\\s*(?:元|人民币)\\s*(?:(?:\\/\\s*|每\\s*)?(${PRICE_UNIT_PATTERN}|月|年|百万\\s*tokens?|百万tokens))?`,
+  "gi"
+);
 
 export function extractPricingPlans(text: string): ExtractedPricingPlan[] {
   const lines = text
@@ -60,8 +70,11 @@ export function extractPricingPlans(text: string): ExtractedPricingPlan[] {
       Boolean(entry.name)
     );
 
-  const plans: ExtractedPricingPlan[] = [];
+  if (planStarts.length === 0) {
+    return extractPricedSectionPlans(lines);
+  }
 
+  const plans: ExtractedPricingPlan[] = [];
   for (let i = 0; i < planStarts.length; i += 1) {
     const start = planStarts[i];
     const end = planStarts[i + 1]?.index ?? lines.length;
@@ -74,7 +87,7 @@ export function extractPricingPlans(text: string): ExtractedPricingPlan[] {
 
 export function extractPriceMentions(text: string): PriceMention[] {
   const mentions: PriceMention[] = [];
-  for (const match of text.matchAll(PRICE_PATTERN)) {
+  for (const match of text.matchAll(SYMBOL_PRICE_PATTERN)) {
     const [, symbol, amountText, englishPeriod, chinesePeriod] = match;
     const amount = Number(amountText.replace(/,/g, ""));
     if (!Number.isFinite(amount)) {
@@ -89,7 +102,90 @@ export function extractPriceMentions(text: string): PriceMention[] {
     });
   }
 
+  for (const match of text.matchAll(CNY_SUFFIX_PRICE_PATTERN)) {
+    const [, amountText, unitText] = match;
+    const amount = Number(amountText.replace(/,/g, ""));
+    if (!Number.isFinite(amount)) {
+      continue;
+    }
+
+    mentions.push({
+      raw: match[0].trim(),
+      amount,
+      currency: "CNY",
+      period: periodFromText(unitText ?? match[0])
+    });
+  }
+
   return mentions;
+}
+
+function extractPricedSectionPlans(lines: string[]): ExtractedPricingPlan[] {
+  const plans: ExtractedPricingPlan[] = [];
+  const seen = new Set<string>();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (extractPriceMentions(line).length === 0) {
+      continue;
+    }
+
+    const nameMatch =
+      findInlinePricedSectionName(line, index) ??
+      findNearestPricedSectionName(lines, index);
+    if (!nameMatch || seen.has(nameMatch.name)) {
+      continue;
+    }
+
+    const end = findNextSectionBoundary(lines, index + 1);
+    plans.push(buildPlan(nameMatch.name, lines.slice(index, end)));
+    seen.add(nameMatch.name);
+  }
+
+  return plans;
+}
+
+function findNearestPricedSectionName(
+  lines: string[],
+  priceLineIndex: number
+): { name: string; index: number } | null {
+  const start = Math.max(0, priceLineIndex - 4);
+
+  for (let index = priceLineIndex - 1; index >= start; index -= 1) {
+    const candidate = cleanSectionHeading(lines[index]);
+    if (candidate) {
+      return { name: candidate, index };
+    }
+  }
+
+  for (let index = priceLineIndex - 1; index >= start; index -= 1) {
+    const candidate = cleanPlanCandidate(lines[index]);
+    if (candidate) {
+      return { name: candidate, index };
+    }
+  }
+
+  return null;
+}
+
+function findInlinePricedSectionName(
+  line: string,
+  index: number
+): { name: string; index: number } | null {
+  const quotedName = line.match(/["'`]([^"'`,]{2,80})["'`]\s*,/);
+  const candidate = quotedName ? cleanPlanCandidate(quotedName[1]) : null;
+
+  return candidate ? { name: candidate, index } : null;
+}
+
+function findNextSectionBoundary(lines: string[], startIndex: number): number {
+  for (let index = startIndex; index < lines.length; index += 1) {
+    if (cleanSectionHeading(lines[index])) {
+      return index;
+    }
+  }
+
+  return lines.length;
 }
 
 function buildPlan(name: string, segment: string[]): ExtractedPricingPlan {
@@ -130,6 +226,35 @@ function detectPlanName(line: string): string | undefined {
 
     return normalized.toLowerCase() === planName.toLowerCase();
   });
+}
+
+function cleanSectionHeading(line: string): string | null {
+  if (!/^#{1,6}\s+\S/.test(line)) {
+    return null;
+  }
+
+  return cleanPlanCandidate(line.replace(/^#{1,6}\s+/, ""));
+}
+
+function cleanPlanCandidate(line: string): string | null {
+  const normalized = line
+    .trim()
+    .replace(/^[-*]\s+/, "")
+    .replace(/[:：]$/, "");
+
+  if (!normalized || extractPriceMentions(normalized).length > 0) {
+    return null;
+  }
+
+  if (/^(pricing|price|input|output|cache hit|cache miss|tokens?|api)$/i.test(normalized)) {
+    return null;
+  }
+
+  if (normalized.length > 80) {
+    return null;
+  }
+
+  return normalized;
 }
 
 function currencyFromSymbol(symbol: string): CurrencyCode {

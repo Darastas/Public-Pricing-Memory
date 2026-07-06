@@ -29,7 +29,7 @@ Public Pricing Memory 是一个公开的价格记忆系统，用来长期追踪 
 - 对比页 `/products/[slug]/compare?from=&to=`：规范化文本 diff、价格变化和套餐变化摘要。
 - 管理页 `/admin`：新增产品、手动抓取、查看抓取日志、重新提取某个快照。
 - API：产品、变化、快照、对比、手动抓取和 cron 抓取接口。
-- Crawler：支持 HTTP 抓取、超时、错误记录、HTML 清洗、content hash、Playwright 动态渲染 fallback。
+- Crawler：支持 HTTP 抓取、超时、错误记录、HTML 清洗、content hash、模型价格表提取、Playwright 动态渲染 fallback。
 - 测试：覆盖 URL 校验、HTML 规范化、价格提取、diff、变更事件、鉴权、crawler、route handler 等关键逻辑。
 
 ## 技术栈
@@ -110,6 +110,8 @@ CRON_SECRET=
 ```text
 OPENAI_API_KEY=
 ANTHROPIC_API_KEY=
+DEEPSEEK_API_KEY=
+DEEPSEEK_BASE_URL=
 STORAGE_BUCKET=
 STORAGE_ACCESS_KEY=
 STORAGE_SECRET_KEY=
@@ -126,6 +128,8 @@ CRON_SECRET="replace-with-a-cron-secret"
 # Optional. Core functionality does not depend on LLM keys.
 OPENAI_API_KEY=""
 ANTHROPIC_API_KEY=""
+DEEPSEEK_API_KEY=""
+DEEPSEEK_BASE_URL="https://api.deepseek.com"
 STORAGE_BUCKET=""
 STORAGE_ACCESS_KEY=""
 STORAGE_SECRET_KEY=""
@@ -137,6 +141,7 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=""
 说明：
 
 - 核心抓取、提取、diff 和变更事件生成不依赖 LLM key。
+- `DEEPSEEK_API_KEY` 和 `DEEPSEEK_BASE_URL` 目前是预留给后续 AI 辅助功能的配置，未配置也不影响公开价格页抓取。
 - `ADMIN_TOKEN` 用于保护新增产品、手动抓取和重新提取等管理操作。
 - `CRON_SECRET` 用于保护定时抓取入口。
 - `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 只在默认 Playwright 浏览器不可用、但系统已安装 Chromium、Edge 或 Chrome 时需要。
@@ -181,7 +186,13 @@ curl -X POST \
   http://localhost:3000/api/crawl/<productId>
 ```
 
-批量抓取 active 产品：
+批量抓取全部 active 产品：
+
+```bash
+npm run crawl:all
+```
+
+调试或减少网络请求时，可以显式限制数量：
 
 ```bash
 npm run crawl:all -- --limit=3
@@ -284,7 +295,7 @@ npm run build
 
 - MVP 阶段原始 HTML 仍可存在数据库字段中；对象存储 adapter 已预留，但还没有接入 S3/R2。
 - 当前没有保存截图，只保留了 `screenshotStorageKey` 字段。
-- 价格提取是确定性启发式，适合作为第一版，但需要更多真实 pricing page fixtures 打磨准确率。
+- 价格提取是确定性启发式，已支持常见套餐名和模型价格表行，但仍需要更多真实 pricing page fixtures 打磨准确率。
 - Playwright fallback 可以处理一部分动态价格页，但不处理登录、强反爬或 CAPTCHA 页面。
 - 当前没有队列系统；cron 和手动 API 会同步执行抓取。
 - 结构化套餐重命名检测仍可继续增强。
