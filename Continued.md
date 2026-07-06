@@ -27,6 +27,7 @@
    - `POST /api/crawl/[productId]`
    - `GET /api/changes`
    - `GET /api/snapshots/[snapshotId]`
+   - `POST /api/snapshots/[snapshotId]/reextract`
    - `GET /api/compare?from=&to=`
    - `GET|POST /api/cron/crawl`
 6. 定时任务：
@@ -42,6 +43,7 @@
 8. 管理操作：
    - 首页和 admin 页面可提交产品
    - admin 页面可对单个产品触发抓取
+   - admin 页面可对最近快照重新运行提取逻辑
    - 写操作使用 `ADMIN_TOKEN`
    - cron 入口使用 `CRON_SECRET`
 9. 脚本和存储边界：
@@ -52,6 +54,12 @@
 11. Prisma 7 初始化：
    - 已安装并接入 `@prisma/adapter-pg`、`pg`、`@types/pg`
    - `prisma/seed.ts` 已加载 `dotenv/config`
+12. 快照重新提取：
+   - `src/lib/extract/reextract-snapshot.ts`
+   - `src/lib/extract/prisma-reextract-repository.ts`
+   - 重新提取会替换目标快照的 PricingPlan，更新 extraction 状态，并重建该快照对应的 ChangeEvent
+   - 新增受保护 API：`POST /api/snapshots/[snapshotId]/reextract`
+   - admin 页会列出最近快照并提供 Re-extract 操作
 
 ## 当前验证结果
 
@@ -67,8 +75,8 @@ npm run build
 最近测试结果：
 
 ```text
-Test Files  10 passed (10)
-Tests       27 passed (27)
+Test Files  14 passed (14)
+Tests       33 passed (33)
 ```
 
 当前新增验证：
@@ -104,7 +112,7 @@ npm run db:seed
 
 浏览器 QA：
 
-- Browser/IAB 工具不可用，已回退到项目本地 Playwright。
+- Browser/IAB 工具当前返回 `Browser is not available: iab`，已回退到项目本地 Playwright，并使用系统 Edge 可执行文件运行。
 - dev server 运行在 `http://127.0.0.1:3001`。
 - 已验证：
   - 首页桌面
@@ -112,12 +120,25 @@ npm run db:seed
   - 产品页 `/products/openai`
   - admin 页 `/admin`
   - 首页搜索 `openai`
+  - admin 页 Recent snapshots 区域
+  - admin 页 Re-extract 按钮交互
 - 结果：
   - 无 console error
   - 无 console warning
   - 无 Next.js 错误 overlay
   - 搜索后 URL 为 `/?q=openai`
   - 搜索结果包含 OpenAI，不包含 Slack
+  - `/admin` 显示 2 个 Re-extract 按钮
+  - 本地开发环境未配置 `ADMIN_TOKEN` 时，Re-extract 按现有 dev 规则成功返回 `Re-extracted`
+
+本轮完整验证已通过：
+
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
 
 ## 当前重要注意事项
 
@@ -131,7 +152,7 @@ npm run db:seed
    - URL：`http://127.0.0.1:3001`
    - 日志：`logs/dev-server.log`
 4. 当前 GitHub 远端已有 `master`：
-   - 最新已推送 commit：`4be4532 实现价格记忆产品核心功能`
+   - 查看最新提交请以 `git log --oneline -1` 和 `git rev-parse origin/master` 为准。
 5. 工作区有一个未提交的 `AGENTS.md` 本地修改，包含敏感内容。
    - 不要提交或推送该文件。
    - 后续提交应显式 stage 目标文件，避免 `git add .`。
@@ -144,9 +165,9 @@ npm run db:seed
    - 当前 fetcher 使用 HTTP fetch。
 3. 还没有保存截图：
    - schema 保留了 `screenshotStorageKey`。
-4. 还没有为 API route 写独立 route handler 测试。
-5. 真实页面启发式提取仍需打磨：
+4. 真实页面启发式提取仍需打磨：
    - Anthropic 可以成功提取套餐，但部分价格/免费层归类仍偏粗糙。
+5. 还没有覆盖所有 API route 的独立 route handler 测试。
 
 ## 下一步建议
 
@@ -159,14 +180,7 @@ npm run test
 npm run build
 ```
 
-2. 显式 stage 安全文件并提交：
-
-```bash
-git add Continued.md scripts/crawl-active.ts src/scripts/crawl-active-env.test.ts
-git commit -m "修复抓取脚本环境加载"
-```
-
-3. 后续优先事项：
+2. 后续优先事项：
    - 打磨真实 pricing page 套餐/价格提取准确性。
-   - 增加 API route 测试。
+   - 增加更多 API route 测试。
    - 增加 Playwright 动态页面抓取 fallback。

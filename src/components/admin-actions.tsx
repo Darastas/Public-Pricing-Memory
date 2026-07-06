@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Play, Plus, RotateCcw } from "lucide-react";
+import { FileText, Play, Plus, RotateCcw } from "lucide-react";
 
 type ProductOption = {
   id: string;
@@ -9,12 +9,26 @@ type ProductOption = {
   slug: string;
 };
 
+type SnapshotOption = {
+  id: string;
+  productName: string;
+  fetchedAt: string;
+  extractionStatus: string;
+  planCount: number;
+};
+
 type ActionState = {
   status: "idle" | "pending" | "success" | "error";
   message: string;
 };
 
-export function AdminActions({ products }: { products: ProductOption[] }) {
+export function AdminActions({
+  products,
+  recentSnapshots
+}: {
+  products: ProductOption[];
+  recentSnapshots: SnapshotOption[];
+}) {
   const [token, setToken] = useState("");
   const [state, setState] = useState<ActionState>({
     status: "idle",
@@ -84,6 +98,28 @@ export function AdminActions({ products }: { products: ProductOption[] }) {
     });
   }
 
+  async function reextractSnapshot(snapshotId: string) {
+    setState({ status: "pending", message: "Re-running extraction..." });
+    const response = await fetch(`/api/snapshots/${snapshotId}/reextract`, {
+      method: "POST",
+      headers: token ? { authorization: `Bearer ${token}` } : {}
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setState({
+        status: "error",
+        message: payload.error ?? "Snapshot re-extraction failed"
+      });
+      return;
+    }
+    setState({
+      status: payload.result?.status === "failed" ? "error" : "success",
+      message: `Re-extracted ${payload.result?.planCount ?? 0} plans and ${
+        payload.result?.changeCount ?? 0
+      } changes.`
+    });
+  }
+
   return (
     <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
       <section className="panel p-5 sm:p-6">
@@ -128,6 +164,46 @@ export function AdminActions({ products }: { products: ProductOption[] }) {
               </button>
             </div>
           ))}
+        </div>
+        <div className="mt-6 border-t border-[var(--border)] pt-5">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-[780]">Recent snapshots</h3>
+            <span className="badge">
+              <FileText size={14} />
+              {recentSnapshots.length} rows
+            </span>
+          </div>
+          <div className="mt-3 grid gap-2">
+            {recentSnapshots.length ? (
+              recentSnapshots.map((snapshot) => (
+                <div
+                  className="flex items-center justify-between gap-3 rounded-[8px] border border-[var(--border)] bg-white px-3 py-2"
+                  key={snapshot.id}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">
+                      {snapshot.productName}
+                    </span>
+                    <span className="block text-xs text-[var(--muted)]">
+                      {snapshot.fetchedAt} - {snapshot.extractionStatus} -{" "}
+                      {snapshot.planCount} plans
+                    </span>
+                  </span>
+                  <button
+                    className="button button-secondary shrink-0"
+                    onClick={() => reextractSnapshot(snapshot.id)}
+                  >
+                    <RotateCcw size={15} />
+                    Re-extract
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="rounded-[8px] border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted)]">
+                No snapshots yet.
+              </p>
+            )}
+          </div>
         </div>
       </section>
 

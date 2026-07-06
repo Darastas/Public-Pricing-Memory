@@ -117,7 +117,7 @@ npm run db:seed
 
 ## 手动抓取
 
-在 `/admin` 页面输入 `ADMIN_TOKEN`，可以对单个产品触发抓取。
+在 `/admin` 页面输入 `ADMIN_TOKEN`，可以对单个产品触发抓取，也可以对最近快照重新运行套餐/价格提取逻辑。
 
 也可以直接调用 API：
 
@@ -143,6 +143,7 @@ npm run crawl:all -- --limit=3
 - `POST /api/crawl/[productId]`
 - `GET /api/changes`
 - `GET /api/snapshots/[snapshotId]`
+- `POST /api/snapshots/[snapshotId]/reextract`
 - `GET /api/compare?from=&to=`
 - `GET|POST /api/cron/crawl`
 
@@ -170,7 +171,7 @@ npm run crawl:all -- --limit=3
 - `/`：搜索、近期变化、追踪产品、抓取状态、提交 URL
 - `/products/[slug]`：产品详情、当前套餐、变化时间线、历史快照、规范化文本入口
 - `/products/[slug]/compare?from=&to=`：文本 diff 和结构化价格变化
-- `/admin`：新增产品、手动抓取、抓取日志和失败原因
+- `/admin`：新增产品、手动抓取、快照重新提取、抓取日志和失败原因
 
 数据库不可用时，首页、产品页和 admin 页会展示 seed 配置和明确的数据库不可用状态，避免空白页。
 

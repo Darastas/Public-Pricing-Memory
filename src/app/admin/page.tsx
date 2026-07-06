@@ -8,7 +8,7 @@ import { formatDateTime } from "@/lib/ui/format";
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  const { products, crawlJobs, databaseError } = await loadAdminData();
+  const { products, crawlJobs, recentSnapshots, databaseError } = await loadAdminData();
 
   return (
     <main className="shell py-7">
@@ -40,6 +40,13 @@ export default async function AdminPage() {
             id: product.id,
             name: product.name,
             slug: product.slug
+          }))}
+          recentSnapshots={recentSnapshots.map((snapshot) => ({
+            id: snapshot.id,
+            productName: snapshot.product.name,
+            fetchedAt: formatDateTime(snapshot.fetchedAt),
+            extractionStatus: snapshot.extractionStatus,
+            planCount: snapshot._count.pricingPlans
           }))}
         />
       </section>
@@ -184,7 +191,7 @@ export default async function AdminPage() {
 
 async function loadAdminData() {
   try {
-    const [products, crawlJobs] = await Promise.all([
+    const [products, crawlJobs, recentSnapshots] = await Promise.all([
       prisma.product.findMany({
         orderBy: { name: "asc" },
         include: {
@@ -205,10 +212,26 @@ async function loadAdminData() {
             select: { slug: true, name: true }
           }
         }
+      }),
+      prisma.snapshot.findMany({
+        orderBy: { fetchedAt: "desc" },
+        take: 12,
+        include: {
+          product: {
+            select: {
+              name: true
+            }
+          },
+          _count: {
+            select: {
+              pricingPlans: true
+            }
+          }
+        }
       })
     ]);
 
-    return { products, crawlJobs, databaseError: null };
+    return { products, crawlJobs, recentSnapshots, databaseError: null };
   } catch (error) {
     return {
       products: seedProducts.map((product) => ({
@@ -225,6 +248,7 @@ async function loadAdminData() {
         _count: { snapshots: 0, changes: 0 }
       })),
       crawlJobs: [],
+      recentSnapshots: [],
       databaseError: databaseUnavailableMessage(error)
     };
   }
