@@ -72,6 +72,10 @@
    - 覆盖 `CRON_SECRET` 拒绝未授权请求
    - 覆盖冷却时间跳过、单个产品抓取失败不阻断后续产品
    - `/api/cron/crawl` 响应新增 `skippedDueToCooldown`
+15. Products route 测试和过滤：
+   - `src/app/api/products/route.test.ts`
+   - `GET /api/products` 支持 `q` 和 `status=active|paused|failed` 组合过滤
+   - 不支持的 status 会返回 400
 
 ## 当前验证结果
 
@@ -87,8 +91,8 @@ npm run build
 最近测试结果：
 
 ```text
-Test Files  15 passed (15)
-Tests       37 passed (37)
+Test Files  16 passed (16)
+Tests       39 passed (39)
 ```
 
 当前新增验证：

@@ -141,7 +141,7 @@ npm run crawl:all -- --limit=3
 
 已实现的主要接口：
 
-- `GET /api/products`
+- `GET /api/products?q=&status=active|paused|failed`
 - `POST /api/products`
 - `GET /api/products/[slug]`
 - `POST /api/crawl/[productId]`

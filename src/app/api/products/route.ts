@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@/generated/prisma/client";
 import { isAdminAuthorized, tokenFromRequest } from "@/lib/auth/admin-token";
 import { serializePricingPlan } from "@/lib/api/serialize";
 import { prisma } from "@/lib/prisma";
@@ -9,17 +10,16 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
+  const status = parseProductStatus(searchParams.get("status"));
+  if (status === "unsupported") {
+    return NextResponse.json(
+      { error: "Unsupported product status filter" },
+      { status: 400 }
+    );
+  }
 
   const products = await prisma.product.findMany({
-    where: query
-      ? {
-          OR: [
-            { name: { contains: query, mode: "insensitive" } },
-            { slug: { contains: query, mode: "insensitive" } },
-            { category: { contains: query, mode: "insensitive" } }
-          ]
-        }
-      : undefined,
+    where: buildProductWhere(query, status),
     orderBy: [{ status: "asc" }, { name: "asc" }],
     include: {
       snapshots: {
@@ -83,6 +83,36 @@ export async function GET(request: Request) {
       };
     })
   });
+}
+
+function buildProductWhere(
+  query: string | undefined,
+  status: "active" | "paused" | "failed" | null
+): Prisma.ProductWhereInput | undefined {
+  if (!query && !status) return undefined;
+
+  return {
+    ...(status ? { status } : {}),
+    ...(query
+      ? {
+          OR: [
+            { name: { contains: query, mode: "insensitive" as const } },
+            { slug: { contains: query, mode: "insensitive" as const } },
+            { category: { contains: query, mode: "insensitive" as const } }
+          ]
+        }
+      : {})
+  };
+}
+
+function parseProductStatus(
+  value: string | null
+): "active" | "paused" | "failed" | "unsupported" | null {
+  if (!value) return null;
+  if (value === "active" || value === "paused" || value === "failed") {
+    return value;
+  }
+  return "unsupported";
 }
 
 export async function POST(request: Request) {
