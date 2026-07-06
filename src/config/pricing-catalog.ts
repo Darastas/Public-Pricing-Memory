@@ -52,14 +52,26 @@ export const catalogKinds = [
 
 const checkedAt = "2026-07-06";
 
-type CatalogProductInput = Omit<CatalogProduct, "prices"> & {
-  price: Omit<CatalogPrice, "id" | "lastCheckedAt" | "sourceUrl"> & {
-    id?: string;
-    sourceUrl?: string;
-  };
+type CatalogPriceInput = Omit<CatalogPrice, "id" | "lastCheckedAt" | "sourceUrl"> & {
+  id?: string;
+  sourceUrl?: string;
 };
 
+type CatalogProductInput = Omit<CatalogProduct, "prices"> &
+  (
+    | {
+        price: CatalogPriceInput;
+        prices?: never;
+      }
+    | {
+        price?: never;
+        prices: CatalogPriceInput[];
+      }
+  );
+
 function catalogProduct(input: CatalogProductInput): CatalogProduct {
+  const prices = "prices" in input ? input.prices : [input.price];
+
   return {
     slug: input.slug,
     name: input.name,
@@ -68,24 +80,22 @@ function catalogProduct(input: CatalogProductInput): CatalogProduct {
     websiteUrl: input.websiteUrl,
     pricingUrl: input.pricingUrl,
     regions: input.regions,
-    prices: [
-      {
-        id: input.price.id ?? "primary",
-        kind: input.price.kind,
-        label: input.price.label,
-        region: input.price.region,
-        status: input.price.status,
-        amount: input.price.amount,
-        currency: input.price.currency,
-        billingPeriod: input.price.billingPeriod,
-        unit: input.price.unit,
-        rawText: input.price.rawText,
-        sourceUrl: input.price.sourceUrl ?? input.pricingUrl,
-        sourceLabel: input.price.sourceLabel,
-        lastCheckedAt: checkedAt,
-        confidence: input.price.confidence
-      }
-    ]
+    prices: prices.map((price, index) => ({
+      id: price.id ?? (index === 0 ? "primary" : `price-${index + 1}`),
+      kind: price.kind,
+      label: price.label,
+      region: price.region,
+      status: price.status,
+      amount: price.amount,
+      currency: price.currency,
+      billingPeriod: price.billingPeriod,
+      unit: price.unit,
+      rawText: price.rawText,
+      sourceUrl: price.sourceUrl ?? input.pricingUrl,
+      sourceLabel: price.sourceLabel,
+      lastCheckedAt: checkedAt,
+      confidence: price.confidence
+    }))
   };
 }
 
@@ -99,21 +109,52 @@ export const catalogProducts: CatalogProduct[] = [
     displayName: { en: "OpenAI", zh: "OpenAI" },
     category: "ai_api",
     websiteUrl: "https://openai.com",
-    pricingUrl: "https://openai.com/api/pricing/",
+    pricingUrl: "https://developers.openai.com/api/docs/pricing",
     regions: ["global"],
-    price: {
-      kind: "ai_api",
-      label: { en: "GPT-5.5 input", zh: "GPT-5.5 输入" },
-      region: "global",
-      status: "published",
-      amount: 5,
-      currency: "USD",
-      billingPeriod: null,
-      unit: "1M tokens",
-      rawText: "$5.00 / 1M tokens",
-      sourceLabel: "OpenAI API pricing",
-      confidence: "official"
-    }
+    prices: [
+      {
+        id: "api-gpt-5-5-standard-short",
+        kind: "ai_api",
+        label: { en: "GPT-5.5 standard, short context", zh: "GPT-5.5 标准短上下文" },
+        region: "global",
+        status: "published",
+        amount: 5,
+        currency: "USD",
+        billingPeriod: null,
+        unit: "1M input tokens",
+        rawText: "$5.00 / 1M input tokens, $30.00 / 1M output tokens",
+        sourceLabel: "OpenAI API pricing",
+        confidence: "official"
+      },
+      {
+        id: "api-gpt-5-5-standard-long",
+        kind: "ai_api",
+        label: { en: "GPT-5.5 standard, long context", zh: "GPT-5.5 标准长上下文" },
+        region: "global",
+        status: "published",
+        amount: 10,
+        currency: "USD",
+        billingPeriod: null,
+        unit: "1M input tokens",
+        rawText: "$10.00 / 1M input tokens, $60.00 / 1M output tokens",
+        sourceLabel: "OpenAI API pricing",
+        confidence: "official"
+      },
+      {
+        id: "api-gpt-5-4-mini-standard-short",
+        kind: "ai_api",
+        label: { en: "GPT-5.4 mini standard, short context", zh: "GPT-5.4 mini 标准短上下文" },
+        region: "global",
+        status: "published",
+        amount: 0.25,
+        currency: "USD",
+        billingPeriod: null,
+        unit: "1M input tokens",
+        rawText: "$0.25 / 1M input tokens, $2.00 / 1M output tokens",
+        sourceLabel: "OpenAI API pricing",
+        confidence: "official"
+      }
+    ]
   }),
   catalogProduct({
     slug: "anthropic",
@@ -150,11 +191,11 @@ export const catalogProducts: CatalogProduct[] = [
       label: { en: "DeepSeek Chat input cache miss", zh: "DeepSeek Chat 输入缓存未命中" },
       region: "global",
       status: "published",
-      amount: 0.27,
+      amount: 0.14,
       currency: "USD",
       billingPeriod: null,
       unit: "1M tokens",
-      rawText: "$0.27 / 1M input tokens cache miss, $1.10 / 1M output tokens",
+      rawText: "$0.14 / 1M input tokens cache miss, $0.28 / 1M output tokens",
       sourceLabel: "DeepSeek API pricing",
       confidence: "official"
     }
@@ -213,14 +254,14 @@ export const catalogProducts: CatalogProduct[] = [
     regions: ["global", "US"],
     price: {
       kind: "ai_api",
-      label: { en: "Gemini 3.1 Pro input", zh: "Gemini 3.1 Pro 输入" },
+      label: { en: "Gemini 3.1 Pro Preview input", zh: "Gemini 3.1 Pro Preview 输入" },
       region: "global",
       status: "published",
-      amount: 1.25,
+      amount: 2,
       currency: "USD",
       billingPeriod: null,
       unit: "1M tokens",
-      rawText: "$1.25 / 1M input tokens, $10 / 1M output tokens for prompts <= 200k tokens",
+      rawText: "$2.00 / 1M input tokens, $12.00 / 1M output tokens for prompts <= 200k tokens",
       sourceLabel: "Gemini API pricing",
       confidence: "official"
     }
@@ -541,19 +582,64 @@ export const catalogProducts: CatalogProduct[] = [
     websiteUrl: "https://www.spotify.com",
     pricingUrl: "https://www.spotify.com/us/premium/",
     regions: ["US"],
-    price: {
-      kind: "consumer_subscription",
-      label: { en: "Premium Individual", zh: "Premium 个人版" },
-      region: "US",
-      status: "published",
-      amount: 11.99,
-      currency: "USD",
-      billingPeriod: "month",
-      unit: null,
-      rawText: "$11.99 / month",
-      sourceLabel: "Spotify Premium US",
-      confidence: "official"
-    }
+    prices: [
+      {
+        id: "premium-individual-us",
+        kind: "consumer_subscription",
+        label: { en: "Premium Individual", zh: "Premium 个人版" },
+        region: "US",
+        status: "published",
+        amount: 12.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$12.99 / month after promotional period",
+        sourceLabel: "Spotify Premium US",
+        confidence: "official"
+      },
+      {
+        id: "premium-duo-us",
+        kind: "consumer_subscription",
+        label: { en: "Premium Duo", zh: "Premium 双人版" },
+        region: "US",
+        status: "published",
+        amount: 18.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$18.99 / month after promotional period",
+        sourceLabel: "Spotify Premium US",
+        confidence: "official"
+      },
+      {
+        id: "premium-family-us",
+        kind: "consumer_subscription",
+        label: { en: "Premium Family", zh: "Premium 家庭版" },
+        region: "US",
+        status: "published",
+        amount: 21.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$21.99 / month after promotional period",
+        sourceLabel: "Spotify Premium US",
+        confidence: "official"
+      },
+      {
+        id: "premium-student-us",
+        kind: "consumer_subscription",
+        label: { en: "Premium Student", zh: "Premium 学生版" },
+        region: "US",
+        status: "published",
+        amount: 6.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$6.99 / month after promotional period",
+        sourceLabel: "Spotify Premium US",
+        confidence: "official"
+      }
+    ]
   }),
   catalogProduct({
     slug: "youtube-premium",
@@ -563,19 +649,50 @@ export const catalogProducts: CatalogProduct[] = [
     websiteUrl: "https://www.youtube.com",
     pricingUrl: "https://www.youtube.com/premium",
     regions: ["US", "IN", "JP"],
-    price: {
-      kind: "consumer_subscription",
-      label: { en: "Individual plan", zh: "个人套餐" },
-      region: "US",
-      status: "needs_review",
-      amount: null,
-      currency: null,
-      billingPeriod: "month",
-      unit: null,
-      rawText: officialReviewText,
-      sourceLabel: "YouTube Premium",
-      confidence: "needs_review"
-    }
+    prices: [
+      {
+        id: "premium-individual-us",
+        kind: "consumer_subscription",
+        label: { en: "Individual plan", zh: "个人套餐" },
+        region: "US",
+        status: "published",
+        amount: 15.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$15.99 / month",
+        sourceLabel: "YouTube Premium",
+        confidence: "official"
+      },
+      {
+        id: "premium-family-us",
+        kind: "consumer_subscription",
+        label: { en: "Family plan", zh: "家庭套餐" },
+        region: "US",
+        status: "published",
+        amount: 26.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$26.99 / month",
+        sourceLabel: "YouTube Premium",
+        confidence: "official"
+      },
+      {
+        id: "premium-student-us",
+        kind: "consumer_subscription",
+        label: { en: "Student plan", zh: "学生套餐" },
+        region: "US",
+        status: "published",
+        amount: 8.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$8.99 / month",
+        sourceLabel: "YouTube Premium",
+        confidence: "official"
+      }
+    ]
   }),
   catalogProduct({
     slug: "netflix",
@@ -585,19 +702,50 @@ export const catalogProducts: CatalogProduct[] = [
     websiteUrl: "https://www.netflix.com",
     pricingUrl: "https://help.netflix.com/en/node/24926",
     regions: ["US", "UK", "JP", "IN"],
-    price: {
-      kind: "consumer_subscription",
-      label: { en: "Plan prices", zh: "会员套餐价格" },
-      region: "US",
-      status: "needs_review",
-      amount: null,
-      currency: null,
-      billingPeriod: "month",
-      unit: null,
-      rawText: officialReviewText,
-      sourceLabel: "Netflix plans and pricing help",
-      confidence: "needs_review"
-    }
+    prices: [
+      {
+        id: "standard-with-ads-us",
+        kind: "consumer_subscription",
+        label: { en: "Standard with ads", zh: "含广告标准套餐" },
+        region: "US",
+        status: "published",
+        amount: 8.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$8.99 / month",
+        sourceLabel: "Netflix plans and pricing help",
+        confidence: "official"
+      },
+      {
+        id: "standard-us",
+        kind: "consumer_subscription",
+        label: { en: "Standard", zh: "标准套餐" },
+        region: "US",
+        status: "published",
+        amount: 19.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$19.99 / month",
+        sourceLabel: "Netflix plans and pricing help",
+        confidence: "official"
+      },
+      {
+        id: "premium-us",
+        kind: "consumer_subscription",
+        label: { en: "Premium", zh: "高级套餐" },
+        region: "US",
+        status: "published",
+        amount: 26.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$26.99 / month",
+        sourceLabel: "Netflix plans and pricing help",
+        confidence: "official"
+      }
+    ]
   }),
   catalogProduct({
     slug: "disney-plus",
@@ -607,19 +755,53 @@ export const catalogProducts: CatalogProduct[] = [
     websiteUrl: "https://www.disneyplus.com",
     pricingUrl: "https://help.disneyplus.com/article/disneyplus-price",
     regions: ["US", "UK", "EU", "JP"],
-    price: {
-      kind: "consumer_subscription",
-      label: { en: "Disney+ plan prices", zh: "Disney+ 套餐价格" },
-      region: "US",
-      status: "needs_review",
-      amount: null,
-      currency: null,
-      billingPeriod: "month",
-      unit: null,
-      rawText: officialReviewText,
-      sourceLabel: "Disney+ pricing help",
-      confidence: "needs_review"
-    }
+    prices: [
+      {
+        id: "with-ads-us",
+        kind: "consumer_subscription",
+        label: { en: "Disney+ with ads", zh: "Disney+ 含广告" },
+        region: "US",
+        status: "published",
+        amount: 11.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$11.99 / month",
+        sourceUrl: "https://www.disneyplus.com/welcome/disney-hulu-hbo-max-bundle",
+        sourceLabel: "Disney+ plans",
+        confidence: "official"
+      },
+      {
+        id: "premium-us",
+        kind: "consumer_subscription",
+        label: { en: "Disney+ Premium", zh: "Disney+ 高级版" },
+        region: "US",
+        status: "published",
+        amount: 18.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$18.99 / month or $189.99 / year",
+        sourceUrl: "https://www.disneyplus.com/welcome/disney-hulu-hbo-max-bundle",
+        sourceLabel: "Disney+ plans",
+        confidence: "official"
+      },
+      {
+        id: "disney-hulu-bundle-us",
+        kind: "consumer_subscription",
+        label: { en: "Disney+, Hulu Bundle", zh: "Disney+ 与 Hulu 捆绑包" },
+        region: "US",
+        status: "published",
+        amount: 12.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$12.99 / month after promotional period",
+        sourceUrl: "https://www.disneyplus.com/welcome/filter-plans",
+        sourceLabel: "Disney+ bundle plans",
+        confidence: "official"
+      }
+    ]
   }),
   catalogProduct({
     slug: "apple-one",
@@ -629,19 +811,50 @@ export const catalogProducts: CatalogProduct[] = [
     websiteUrl: "https://www.apple.com/apple-one/",
     pricingUrl: "https://www.apple.com/apple-one/",
     regions: ["US", "UK", "JP", "IN"],
-    price: {
-      kind: "consumer_subscription",
-      label: { en: "Individual plan", zh: "个人套餐" },
-      region: "US",
-      status: "published",
-      amount: 19.95,
-      currency: "USD",
-      billingPeriod: "month",
-      unit: null,
-      rawText: "$19.95 / month",
-      sourceLabel: "Apple One",
-      confidence: "official"
-    }
+    prices: [
+      {
+        id: "individual-us",
+        kind: "consumer_subscription",
+        label: { en: "Individual plan", zh: "个人套餐" },
+        region: "US",
+        status: "published",
+        amount: 19.95,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$19.95 / month",
+        sourceLabel: "Apple One",
+        confidence: "official"
+      },
+      {
+        id: "family-us",
+        kind: "consumer_subscription",
+        label: { en: "Family plan", zh: "家庭套餐" },
+        region: "US",
+        status: "published",
+        amount: 25.95,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$25.95 / month",
+        sourceLabel: "Apple One",
+        confidence: "official"
+      },
+      {
+        id: "premier-us",
+        kind: "consumer_subscription",
+        label: { en: "Premier plan", zh: "Premier 套餐" },
+        region: "US",
+        status: "published",
+        amount: 37.95,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$37.95 / month",
+        sourceLabel: "Apple One",
+        confidence: "official"
+      }
+    ]
   }),
   catalogProduct({
     slug: "amazon-prime",
@@ -651,19 +864,50 @@ export const catalogProducts: CatalogProduct[] = [
     websiteUrl: "https://www.amazon.com/amazonprime",
     pricingUrl: "https://www.amazon.com/amazonprime",
     regions: ["US", "UK", "JP", "IN"],
-    price: {
-      kind: "consumer_subscription",
-      label: { en: "Prime monthly", zh: "Prime 月付" },
-      region: "US",
-      status: "needs_review",
-      amount: null,
-      currency: null,
-      billingPeriod: "month",
-      unit: null,
-      rawText: officialReviewText,
-      sourceLabel: "Amazon Prime",
-      confidence: "needs_review"
-    }
+    prices: [
+      {
+        id: "prime-monthly-us",
+        kind: "consumer_subscription",
+        label: { en: "Prime monthly", zh: "Prime 月付" },
+        region: "US",
+        status: "published",
+        amount: 14.99,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$14.99 / month after trial",
+        sourceLabel: "Amazon Prime",
+        confidence: "official"
+      },
+      {
+        id: "prime-annual-us",
+        kind: "consumer_subscription",
+        label: { en: "Prime annual", zh: "Prime 年付" },
+        region: "US",
+        status: "published",
+        amount: 139,
+        currency: "USD",
+        billingPeriod: "year",
+        unit: null,
+        rawText: "$139 / year after trial",
+        sourceLabel: "Amazon Prime",
+        confidence: "official"
+      },
+      {
+        id: "prime-student-monthly-us",
+        kind: "consumer_subscription",
+        label: { en: "Prime Student monthly", zh: "Prime 学生月付" },
+        region: "US",
+        status: "published",
+        amount: 7.49,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$7.49 / month after trial",
+        sourceLabel: "Amazon Prime",
+        confidence: "official"
+      }
+    ]
   }),
   catalogProduct({
     slug: "notion",
@@ -673,19 +917,50 @@ export const catalogProducts: CatalogProduct[] = [
     websiteUrl: "https://www.notion.com",
     pricingUrl: "https://www.notion.com/pricing",
     regions: ["global", "US"],
-    price: {
-      kind: "developer_subscription",
-      label: { en: "Plus plan", zh: "Plus 套餐" },
-      region: "global",
-      status: "published",
-      amount: 10,
-      currency: "USD",
-      billingPeriod: "month",
-      unit: "per seat",
-      rawText: "$10 / seat / month billed monthly",
-      sourceLabel: "Notion pricing",
-      confidence: "official"
-    }
+    prices: [
+      {
+        id: "plus-monthly",
+        kind: "developer_subscription",
+        label: { en: "Plus plan", zh: "Plus 套餐" },
+        region: "global",
+        status: "published",
+        amount: 12,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: "per seat",
+        rawText: "$12 / seat / month billed monthly",
+        sourceLabel: "Notion pricing",
+        confidence: "official"
+      },
+      {
+        id: "business-monthly",
+        kind: "developer_subscription",
+        label: { en: "Business plan", zh: "Business 套餐" },
+        region: "global",
+        status: "published",
+        amount: 24,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: "per seat",
+        rawText: "$24 / seat / month billed monthly",
+        sourceLabel: "Notion pricing",
+        confidence: "official"
+      },
+      {
+        id: "enterprise-contact-sales",
+        kind: "developer_subscription",
+        label: { en: "Enterprise plan", zh: "Enterprise 套餐" },
+        region: "global",
+        status: "needs_review",
+        amount: null,
+        currency: null,
+        billingPeriod: null,
+        unit: null,
+        rawText: "Custom pricing; contact sales on the official pricing page.",
+        sourceLabel: "Notion pricing",
+        confidence: "needs_review"
+      }
+    ]
   }),
   catalogProduct({
     slug: "github",
@@ -695,19 +970,36 @@ export const catalogProducts: CatalogProduct[] = [
     websiteUrl: "https://github.com",
     pricingUrl: "https://github.com/pricing",
     regions: ["global", "US"],
-    price: {
-      kind: "developer_subscription",
-      label: { en: "Team plan", zh: "Team 套餐" },
-      region: "global",
-      status: "published",
-      amount: 4,
-      currency: "USD",
-      billingPeriod: "month",
-      unit: "per user",
-      rawText: "$4 / user / month",
-      sourceLabel: "GitHub pricing",
-      confidence: "official"
-    }
+    prices: [
+      {
+        id: "team-monthly",
+        kind: "developer_subscription",
+        label: { en: "Team plan", zh: "Team 套餐" },
+        region: "global",
+        status: "published",
+        amount: 4,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: "per user",
+        rawText: "$4 / user / month",
+        sourceLabel: "GitHub pricing",
+        confidence: "official"
+      },
+      {
+        id: "enterprise-cloud-monthly",
+        kind: "developer_subscription",
+        label: { en: "Enterprise Cloud", zh: "Enterprise Cloud" },
+        region: "global",
+        status: "published",
+        amount: 21,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: "per user",
+        rawText: "$21 / user / month",
+        sourceLabel: "GitHub pricing",
+        confidence: "official"
+      }
+    ]
   }),
   catalogProduct({
     slug: "cursor",
@@ -717,19 +1009,50 @@ export const catalogProducts: CatalogProduct[] = [
     websiteUrl: "https://cursor.com",
     pricingUrl: "https://cursor.com/pricing",
     regions: ["global", "US"],
-    price: {
-      kind: "developer_subscription",
-      label: { en: "Pro plan", zh: "Pro 套餐" },
-      region: "global",
-      status: "published",
-      amount: 20,
-      currency: "USD",
-      billingPeriod: "month",
-      unit: null,
-      rawText: "$20 / month",
-      sourceLabel: "Cursor pricing",
-      confidence: "official"
-    }
+    prices: [
+      {
+        id: "pro-monthly",
+        kind: "developer_subscription",
+        label: { en: "Pro plan", zh: "Pro 套餐" },
+        region: "global",
+        status: "published",
+        amount: 20,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$20 / month",
+        sourceLabel: "Cursor pricing",
+        confidence: "official"
+      },
+      {
+        id: "ultra-monthly",
+        kind: "developer_subscription",
+        label: { en: "Ultra plan", zh: "Ultra 套餐" },
+        region: "global",
+        status: "published",
+        amount: 200,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$200 / month",
+        sourceLabel: "Cursor pricing",
+        confidence: "official"
+      },
+      {
+        id: "teams-monthly",
+        kind: "developer_subscription",
+        label: { en: "Teams plan", zh: "Teams 套餐" },
+        region: "global",
+        status: "published",
+        amount: 40,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: "per user",
+        rawText: "$40 / user / month",
+        sourceLabel: "Cursor pricing",
+        confidence: "official"
+      }
+    ]
   }),
   catalogProduct({
     slug: "chatgpt",
@@ -739,19 +1062,50 @@ export const catalogProducts: CatalogProduct[] = [
     websiteUrl: "https://chatgpt.com",
     pricingUrl: "https://openai.com/chatgpt/pricing/",
     regions: ["global", "US"],
-    price: {
-      kind: "ai_subscription",
-      label: { en: "ChatGPT Plus", zh: "ChatGPT Plus" },
-      region: "global",
-      status: "published",
-      amount: 20,
-      currency: "USD",
-      billingPeriod: "month",
-      unit: null,
-      rawText: "$20 / month",
-      sourceLabel: "ChatGPT pricing",
-      confidence: "official"
-    }
+    prices: [
+      {
+        id: "plus-monthly",
+        kind: "ai_subscription",
+        label: { en: "ChatGPT Plus", zh: "ChatGPT Plus" },
+        region: "global",
+        status: "published",
+        amount: 20,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$20 / month",
+        sourceLabel: "ChatGPT pricing",
+        confidence: "official"
+      },
+      {
+        id: "pro-monthly",
+        kind: "ai_subscription",
+        label: { en: "ChatGPT Pro", zh: "ChatGPT Pro" },
+        region: "global",
+        status: "published",
+        amount: 200,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$200 / month",
+        sourceLabel: "ChatGPT pricing",
+        confidence: "official"
+      },
+      {
+        id: "business-monthly",
+        kind: "ai_subscription",
+        label: { en: "ChatGPT Business", zh: "ChatGPT Business" },
+        region: "global",
+        status: "published",
+        amount: 30,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: "per user",
+        rawText: "$30 / user / month billed monthly",
+        sourceLabel: "ChatGPT pricing",
+        confidence: "official"
+      }
+    ]
   }),
   catalogProduct({
     slug: "claude",
@@ -761,18 +1115,49 @@ export const catalogProducts: CatalogProduct[] = [
     websiteUrl: "https://claude.ai",
     pricingUrl: "https://www.anthropic.com/pricing",
     regions: ["global", "US"],
-    price: {
-      kind: "ai_subscription",
-      label: { en: "Claude Pro", zh: "Claude Pro" },
-      region: "global",
-      status: "published",
-      amount: 20,
-      currency: "USD",
-      billingPeriod: "month",
-      unit: null,
-      rawText: "$20 / month",
-      sourceLabel: "Anthropic pricing",
-      confidence: "official"
-    }
+    prices: [
+      {
+        id: "pro-monthly",
+        kind: "ai_subscription",
+        label: { en: "Claude Pro", zh: "Claude Pro" },
+        region: "global",
+        status: "published",
+        amount: 20,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "$20 / month",
+        sourceLabel: "Anthropic pricing",
+        confidence: "official"
+      },
+      {
+        id: "max-monthly",
+        kind: "ai_subscription",
+        label: { en: "Claude Max", zh: "Claude Max" },
+        region: "global",
+        status: "published",
+        amount: 100,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: null,
+        rawText: "From $100 / month",
+        sourceLabel: "Anthropic pricing",
+        confidence: "official"
+      },
+      {
+        id: "team-monthly",
+        kind: "ai_subscription",
+        label: { en: "Claude Team", zh: "Claude Team" },
+        region: "global",
+        status: "published",
+        amount: 30,
+        currency: "USD",
+        billingPeriod: "month",
+        unit: "per member",
+        rawText: "$30 / member / month billed monthly",
+        sourceLabel: "Anthropic pricing",
+        confidence: "official"
+      }
+    ]
   })
 ];

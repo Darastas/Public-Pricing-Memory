@@ -88,4 +88,18 @@ describe("pricing catalog data", () => {
       ])
     );
   });
+
+  it("records multiple official rows for products with several published plans", () => {
+    const bySlug = new Map(catalogProducts.map((product) => [product.slug, product]));
+
+    expect(bySlug.get("openai")?.prices.map((price) => price.id)).toEqual(
+      expect.arrayContaining([
+        "api-gpt-5-5-standard-short",
+        "api-gpt-5-4-mini-standard-short"
+      ])
+    );
+    expect(bySlug.get("spotify")?.prices.map((price) => price.id)).toEqual(
+      expect.arrayContaining(["premium-individual-us", "premium-duo-us", "premium-family-us"])
+    );
+  });
 });

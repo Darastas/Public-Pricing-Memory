@@ -210,3 +210,30 @@ npm run build
    - 打磨真实 pricing page 套餐/价格提取准确性。
    - 增加更多 API route 测试。
    - 增加截图保存或对象存储落地。
+
+## 2026-07-06 价格目录双语改版进展
+
+已在隔离 worktree `D:\Public Pricing Memory\.worktrees\pricing-catalog-i18n` 的
+`pricing-catalog-i18n` 分支继续执行方案 B。
+
+本阶段完成：
+
+- `src/config/pricing-catalog.ts` 支持一个产品维护多条官方价格行。
+- OpenAI API、Spotify、YouTube Premium、Netflix、Disney+、Apple One、Amazon Prime、
+  Notion、GitHub、Cursor、ChatGPT、Claude 已补充首批多套餐/多价格行。
+- 仍无法稳定从官方页面直接确认的厂商继续使用 `needs_review`，不写入推断价格或换算价格。
+- `src/config/pricing-catalog.test.ts` 新增多价格行覆盖，防止产品只保留一个代表价格。
+
+来源策略：
+
+- 只使用官方 pricing、API billing、help center 或产品订阅页作为 catalog source URL。
+- 没有使用第三方价格聚合站或自行汇率换算。
+- 每条 price row 仍带 `sourceUrl`、`sourceLabel`、`lastCheckedAt`、`confidence` 和 `status`。
+
+本阶段验证：
+
+```bash
+npm run test -- src/config/pricing-catalog.test.ts
+```
+
+结果：6 个 catalog 测试全部通过。
