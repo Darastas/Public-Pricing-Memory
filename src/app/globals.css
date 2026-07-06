@@ -79,6 +79,10 @@ textarea {
   outline: none;
 }
 
+.field-with-leading-icon {
+  padding-left: 40px;
+}
+
 .field:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(47, 111, 95, 0.12);

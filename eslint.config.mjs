@@ -7,6 +7,7 @@ export default defineConfig([
   ...nextTs,
   globalIgnores([
     ".next/**",
+    ".worktrees/**",
     "node_modules/**",
     "dist/**",
     "build/**",

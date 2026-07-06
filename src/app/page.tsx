@@ -79,7 +79,7 @@ export default async function Home({
                 size={17}
               />
               <input
-                className="field pl-10"
+                className="field field-with-leading-icon"
                 defaultValue={query ?? ""}
                 name="q"
                 placeholder={t.searchPlaceholder}
