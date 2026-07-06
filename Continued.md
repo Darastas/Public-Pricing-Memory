@@ -76,6 +76,10 @@
    - `src/app/api/products/route.test.ts`
    - `GET /api/products` 支持 `q` 和 `status=active|paused|failed` 组合过滤
    - 不支持的 status 会返回 400
+16. Compare route 测试和边界保护：
+   - `src/app/api/compare/route.test.ts`
+   - 覆盖缺少 `from`/`to` 参数、缺失快照、跨产品快照拒绝和成功对比响应
+   - `GET /api/compare` 现在会拒绝 `from` 与 `to` 相同的无意义自比较
 
 ## 当前验证结果
 
@@ -91,8 +95,8 @@ npm run build
 最近测试结果：
 
 ```text
-Test Files  16 passed (16)
-Tests       39 passed (39)
+Test Files  17 passed (17)
+Tests       44 passed (44)
 ```
 
 当前新增验证：

@@ -17,6 +17,13 @@ export async function GET(request: Request) {
     );
   }
 
+  if (from === to) {
+    return NextResponse.json(
+      { error: "from and to snapshot ids must be different" },
+      { status: 400 }
+    );
+  }
+
   const snapshots = await prisma.snapshot.findMany({
     where: {
       id: { in: [from, to] }
