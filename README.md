@@ -1,5 +1,7 @@
 # Public Pricing Memory
 
+更完整的中文说明见 [README.zh-CN.md](./README.zh-CN.md)。
+
 Public Pricing Memory 是一个公开价格记忆站：持续追踪 SaaS、API、AI 工具和开发者产品的价格页，保存历史快照，提取套餐和价格文本，并生成可公开浏览的变化时间线。
 
 核心目标不是一次性总结网页，而是长期积累：

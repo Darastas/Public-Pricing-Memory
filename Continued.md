@@ -80,6 +80,10 @@
    - `src/app/api/compare/route.test.ts`
    - 覆盖缺少 `from`/`to` 参数、缺失快照、跨产品快照拒绝和成功对比响应
    - `GET /api/compare` 现在会拒绝 `from` 与 `to` 相同的无意义自比较
+17. 中文 README：
+   - 新增 `README.zh-CN.md`
+   - 原 `README.md` 顶部增加中文版入口
+   - 中文版覆盖产品定位、功能、环境变量、数据库、seed、抓取、API、cron、部署、验证、限制和 Roadmap
 
 ## 当前验证结果
 
