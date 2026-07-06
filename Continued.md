@@ -71,6 +71,37 @@ Test Files  10 passed (10)
 Tests       27 passed (27)
 ```
 
+当前新增验证：
+
+- Docker Desktop 已可用。
+- 已成功拉取并启动 `postgres:16-alpine`。
+- 本地 PostgreSQL 容器：
+  - name: `public-pricing-memory-postgres`
+  - database: `mydb`
+  - user: `johndoe`
+  - port: `localhost:5432`
+- 已成功运行：
+
+```bash
+npm run db:push
+npm run db:seed
+```
+
+- seed 结果：`Seeded 8 products.`
+- 已修复 `scripts/crawl-active.ts`，现在会在导入 Prisma singleton 前加载 `dotenv/config`。
+- 已新增回归测试：
+  - `src/scripts/crawl-active-env.test.ts`
+- 已成功运行真实抓取：
+  - `npm run crawl:all -- --limit=1`
+  - OpenAI 返回 HTTP 403，保存了 failed snapshot、CrawlJob 和 1 个 ChangeEvent。
+  - 直接抓取 Anthropic 成功，保存了 succeeded snapshot、4 个 PricingPlan 和 1 个 ChangeEvent。
+- 数据库当前计数：
+  - Product: 8
+  - Snapshot: 2
+  - PricingPlan: 4
+  - ChangeEvent: 2
+  - CrawlJob: 2
+
 浏览器 QA：
 
 - Browser/IAB 工具不可用，已回退到项目本地 Playwright。
@@ -90,49 +121,36 @@ Tests       27 passed (27)
 
 ## 当前重要注意事项
 
-1. 本机 PostgreSQL 当前不可用：
-   - `npm run db:push` 曾因 `localhost:5432` 连接失败报 P1001。
-   - Docker Desktop 可以启动，但拉取 `postgres:16-alpine` 连续遇到 Docker Hub EOF。
-   - 因此本轮没有实际跑通 `db:push` 和 `db:seed`。
-2. 页面已做数据库不可用 fallback：
+1. 本机 PostgreSQL 当前已可用：
+   - Docker Hub 临时 EOF 已恢复，`postgres:16-alpine` 已拉取成功。
+   - `db:push` 和 `db:seed` 已跑通。
+2. 页面仍保留数据库不可用 fallback：
    - 首页、产品页、admin 页会展示 seed 配置和明确的数据库不可用提示。
    - 这只是开发体验兜底，不替代真实数据库。
 3. 当前 dev server 可能仍在后台运行：
    - URL：`http://127.0.0.1:3001`
    - 日志：`logs/dev-server.log`
-4. 尚未提交 commit。
+4. 当前 GitHub 远端已有 `master`：
+   - 最新已推送 commit：`4be4532 实现价格记忆产品核心功能`
+5. 工作区有一个未提交的 `AGENTS.md` 本地修改，包含敏感内容。
+   - 不要提交或推送该文件。
+   - 后续提交应显式 stage 目标文件，避免 `git add .`。
 
 ## 还没完全覆盖的事项
 
-1. 未在真实 PostgreSQL 上执行：
-   - `npm run db:push`
-   - `npm run db:seed`
-   - 实际抓取 seed 产品
-2. 还没有对象存储实现：
+1. 还没有对象存储实现：
    - 目前仍以数据库字段保存原始 HTML。
-3. 还没有 Playwright 动态页面抓取 fallback：
+2. 还没有 Playwright 动态页面抓取 fallback：
    - 当前 fetcher 使用 HTTP fetch。
-4. 还没有保存截图：
+3. 还没有保存截图：
    - schema 保留了 `screenshotStorageKey`。
-5. 还没有为 API route 写独立 route handler 测试。
+4. 还没有为 API route 写独立 route handler 测试。
+5. 真实页面启发式提取仍需打磨：
+   - Anthropic 可以成功提取套餐，但部分价格/免费层归类仍偏粗糙。
 
 ## 下一步建议
 
-1. 准备可用 PostgreSQL。
-2. 运行：
-
-```bash
-npm run db:push
-npm run db:seed
-```
-
-3. 触发一次抓取：
-
-```bash
-npm run crawl:all -- --limit=1
-```
-
-4. 再次验证：
+1. 再次验证：
 
 ```bash
 npm run lint
@@ -141,4 +159,14 @@ npm run test
 npm run build
 ```
 
-5. 用中文 commit message 提交当前阶段成果。
+2. 显式 stage 安全文件并提交：
+
+```bash
+git add Continued.md scripts/crawl-active.ts src/scripts/crawl-active-env.test.ts
+git commit -m "修复抓取脚本环境加载"
+```
+
+3. 后续优先事项：
+   - 打磨真实 pricing page 套餐/价格提取准确性。
+   - 增加 API route 测试。
+   - 增加 Playwright 动态页面抓取 fallback。

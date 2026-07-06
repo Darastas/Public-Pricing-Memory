@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { fetchPricingPage } from "../src/lib/crawler/fetcher";
 import { createPrismaCrawlRepository } from "../src/lib/crawler/prisma-repository";
 import { runCrawl } from "../src/lib/crawler/run-crawl";
