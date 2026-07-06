@@ -1,0 +1,39 @@
+# dependencies
+node_modules
+
+# Next.js
+.next
+out
+
+# production
+build
+dist
+
+# local env
+.env
+.env.*
+!.env.example
+
+# database and generated artifacts
+*.db
+*.db-journal
+tsconfig.tsbuildinfo
+src/generated/prisma
+coverage
+playwright-report
+test-results
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+/prisma/src/generated/prisma

@@ -1,0 +1,152 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProductStatus {
+  active
+  paused
+  failed
+}
+
+enum ExtractionStatus {
+  pending
+  succeeded
+  failed
+  unchanged
+}
+
+enum ChangeType {
+  price_increase
+  price_decrease
+  plan_added
+  plan_removed
+  plan_renamed
+  free_tier_changed
+  feature_gate_changed
+  usage_limit_changed
+  copy_changed
+  page_unreachable
+  structure_changed
+}
+
+enum ChangeSeverity {
+  low
+  medium
+  high
+}
+
+enum CrawlJobStatus {
+  queued
+  running
+  succeeded
+  failed
+}
+
+model Product {
+  id         String        @id @default(cuid())
+  slug       String        @unique
+  name       String
+  websiteUrl String
+  pricingUrl String
+  category   String
+  status     ProductStatus @default(active)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  snapshots    Snapshot[]
+  pricingPlans PricingPlan[]
+  changes      ChangeEvent[]
+  crawlJobs    CrawlJob[]
+
+  @@index([status])
+  @@index([category])
+}
+
+model Snapshot {
+  id                   String           @id @default(cuid())
+  productId            String
+  fetchedAt            DateTime         @default(now())
+  sourceUrl            String
+  httpStatus           Int?
+  contentHash          String
+  rawHtmlStorageKey    String?
+  rawHtml              String?
+  normalizedText       String
+  screenshotStorageKey String?
+  extractionStatus     ExtractionStatus @default(pending)
+  errorMessage         String?
+
+  product         Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  pricingPlans    PricingPlan[]
+  previousChanges ChangeEvent[] @relation("PreviousSnapshot")
+  currentChanges  ChangeEvent[] @relation("CurrentSnapshot")
+
+  @@index([productId, fetchedAt])
+  @@index([contentHash])
+  @@index([extractionStatus])
+}
+
+model PricingPlan {
+  id            String   @id @default(cuid())
+  snapshotId    String
+  productId     String
+  name          String
+  priceAmount   Decimal? @db.Decimal(12, 2)
+  priceCurrency String?
+  billingPeriod String?
+  rawPriceText  String?
+  features      Json     @default("[]")
+  limits        Json     @default("{}")
+  isFreeTier    Boolean  @default(false)
+  metadata      Json     @default("{}")
+
+  snapshot Snapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([snapshotId])
+  @@index([name])
+}
+
+model ChangeEvent {
+  id                 String         @id @default(cuid())
+  productId          String
+  previousSnapshotId String?
+  currentSnapshotId  String?
+  detectedAt         DateTime       @default(now())
+  changeType         ChangeType
+  severity           ChangeSeverity
+  title              String
+  summary            String
+  details            Json           @default("{}")
+
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  previousSnapshot Snapshot? @relation("PreviousSnapshot", fields: [previousSnapshotId], references: [id], onDelete: SetNull)
+  currentSnapshot  Snapshot? @relation("CurrentSnapshot", fields: [currentSnapshotId], references: [id], onDelete: SetNull)
+
+  @@index([productId, detectedAt])
+  @@index([changeType])
+  @@index([severity])
+}
+
+model CrawlJob {
+  id           String         @id @default(cuid())
+  productId    String
+  status       CrawlJobStatus @default(queued)
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  errorMessage String?
+  logs         Json           @default("[]")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, createdAt])
+  @@index([status])
+}
