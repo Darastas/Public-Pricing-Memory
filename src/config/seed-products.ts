@@ -1,3 +1,5 @@
+import { catalogProducts } from "./pricing-catalog";
+
 export type SeedProduct = {
   slug: string;
   name: string;
@@ -6,7 +8,7 @@ export type SeedProduct = {
   category: string;
 };
 
-export const seedProducts: SeedProduct[] = [
+const baseSeedProducts: SeedProduct[] = [
   {
     slug: "openai",
     name: "OpenAI",
@@ -64,3 +66,36 @@ export const seedProducts: SeedProduct[] = [
     category: "Collaboration"
   }
 ];
+
+const catalogSeedProducts: SeedProduct[] = catalogProducts.map((product) => ({
+  slug: product.slug,
+  name: product.name,
+  websiteUrl: product.websiteUrl,
+  pricingUrl: product.pricingUrl,
+  category: seedCategoryFor(product.category)
+}));
+
+export const seedProducts: SeedProduct[] = mergeSeedProducts([
+  ...baseSeedProducts,
+  ...catalogSeedProducts
+]);
+
+function mergeSeedProducts(products: SeedProduct[]): SeedProduct[] {
+  const bySlug = new Map<string, SeedProduct>();
+
+  for (const product of products) {
+    if (!bySlug.has(product.slug)) {
+      bySlug.set(product.slug, product);
+    }
+  }
+
+  return Array.from(bySlug.values());
+}
+
+function seedCategoryFor(category: string): string {
+  if (category === "ai_api") return "AI API";
+  if (category === "ai_subscription") return "AI Subscription";
+  if (category === "consumer_subscription") return "Consumer Subscription";
+  if (category === "developer_subscription") return "Developer Platform";
+  return category;
+}
