@@ -9,19 +9,25 @@ import {
   Layers,
   Link as LinkIcon
 } from "lucide-react";
+import { CatalogPriceList } from "@/components/catalog-price-list";
 import { serializePricingPlan } from "@/lib/api/serialize";
 import { seedProducts } from "@/config/seed-products";
+import { dictionary, getLocale, withLocaleHref } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime, formatPrice, severityLabel } from "@/lib/ui/format";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProductPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ lang?: string | string[] }>;
 }) {
   const { slug } = await params;
+  const locale = getLocale(await searchParams);
+  const t = dictionary[locale];
   const { product, databaseError } = await loadProduct(slug);
 
   if (!product) {
@@ -70,9 +76,9 @@ export default async function ProductPage({
         </div>
         <div className="mt-5 flex flex-wrap gap-3">
           {compareHref ? (
-            <Link className="button button-primary" href={compareHref}>
+            <Link className="button button-primary" href={withLocaleHref(compareHref, locale)}>
               <GitCompareArrows size={16} />
-              Compare latest
+              {t.compareLatest}
             </Link>
           ) : null}
           {latestSnapshot ? (
@@ -81,8 +87,8 @@ export default async function ProductPage({
               Raw snapshot JSON
             </Link>
           ) : null}
-          <Link className="button button-secondary" href="/admin">
-            Trigger crawl
+          <Link className="button button-secondary" href={withLocaleHref("/admin", locale)}>
+            {locale === "zh" ? "触发抓取" : "Trigger crawl"}
             <ArrowRight size={16} />
           </Link>
         </div>
@@ -98,10 +104,10 @@ export default async function ProductPage({
       <section className="mt-5 grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
         <div className="panel p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-[800]">Current plans</h2>
+            <h2 className="text-xl font-[800]">{t.currentPlans}</h2>
             <span className="badge">
               <Layers size={14} />
-              {currentPlans.length} detected
+              {currentPlans.length} {t.detected}
             </span>
           </div>
           <div className="mt-5 grid gap-3">
@@ -127,7 +133,14 @@ export default async function ProductPage({
                 </article>
               ))
             ) : (
-              <EmptyState title="No plans extracted" detail="Run a successful crawl to populate current plans." />
+              <EmptyState
+                title={t.noPlansExtracted}
+                detail={
+                  locale === "zh"
+                    ? "成功抓取后会填充当前套餐。"
+                    : "Run a successful crawl to populate current plans."
+                }
+              />
             )}
           </div>
         </div>
@@ -168,6 +181,8 @@ export default async function ProductPage({
         </div>
       </section>
 
+      <CatalogPriceList productSlug={product.slug} locale={locale} />
+
       <section className="mt-5 panel overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] p-5 sm:p-6">
           <div>
@@ -177,7 +192,7 @@ export default async function ProductPage({
             </p>
           </div>
           {compareHref ? (
-            <Link className="button button-secondary" href={compareHref}>
+            <Link className="button button-secondary" href={withLocaleHref(compareHref, locale)}>
               Compare newest pair
               <GitCompareArrows size={16} />
             </Link>
