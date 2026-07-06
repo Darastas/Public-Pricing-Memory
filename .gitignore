@@ -36,4 +36,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# local worktrees
+.worktrees/
+
 /prisma/src/generated/prisma
