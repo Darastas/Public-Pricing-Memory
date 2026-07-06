@@ -70,7 +70,8 @@ type CatalogProductInput = Omit<CatalogProduct, "prices"> &
   );
 
 function catalogProduct(input: CatalogProductInput): CatalogProduct {
-  const prices = "prices" in input ? input.prices : [input.price];
+  const prices: CatalogPriceInput[] =
+    "prices" in input && input.prices ? input.prices : [input.price];
 
   return {
     slug: input.slug,

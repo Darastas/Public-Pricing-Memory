@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { Plus, Send } from "lucide-react";
+import type { Locale } from "@/lib/i18n";
 
 type SubmitState =
   | { status: "idle"; message: string }
@@ -9,7 +10,8 @@ type SubmitState =
   | { status: "success"; message: string }
   | { status: "error"; message: string };
 
-export function ProductSubmitForm() {
+export function ProductSubmitForm({ locale = "en" }: { locale?: Locale }) {
+  const copy = locale === "zh" ? zhCopy : enCopy;
   const [state, setState] = useState<SubmitState>({
     status: "idle",
     message: ""
@@ -19,7 +21,7 @@ export function ProductSubmitForm() {
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
-    setState({ status: "pending", message: "Submitting product..." });
+    setState({ status: "pending", message: copy.submitting });
 
     const response = await fetch("/api/products", {
       method: "POST",
@@ -41,7 +43,7 @@ export function ProductSubmitForm() {
     if (!response.ok) {
       setState({
         status: "error",
-        message: payload.error ?? "Product submission failed"
+        message: payload.error ?? copy.failed
       });
       return;
     }
@@ -49,15 +51,15 @@ export function ProductSubmitForm() {
     form.reset();
     setState({
       status: "success",
-      message: "Product is now tracked. Refresh to see it in the archive."
+      message: copy.success
     });
   }
 
   return (
     <form className="grid gap-3" onSubmit={onSubmit}>
       <div className="grid gap-3 sm:grid-cols-2">
-        <input className="field" name="name" placeholder="Product name" required />
-        <input className="field" name="category" placeholder="Category" />
+        <input className="field" name="name" placeholder={copy.productName} required />
+        <input className="field" name="category" placeholder={copy.category} />
       </div>
       <input className="field" name="websiteUrl" placeholder="https://example.com" required />
       <input
@@ -69,7 +71,7 @@ export function ProductSubmitForm() {
       <input
         className="field"
         name="adminToken"
-        placeholder="Admin token for local write access"
+        placeholder={copy.adminToken}
         type="password"
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -82,13 +84,35 @@ export function ProductSubmitForm() {
                 : "text-[var(--muted)]"
           }`}
         >
-          {state.message || "Production writes require ADMIN_TOKEN."}
+          {state.message || copy.requiresToken}
         </p>
         <button className="button button-primary" disabled={state.status === "pending"}>
           {state.status === "pending" ? <Send size={16} /> : <Plus size={16} />}
-          Track URL
+          {copy.trackUrl}
         </button>
       </div>
     </form>
   );
 }
+
+const enCopy = {
+  adminToken: "Admin token for local write access",
+  category: "Category",
+  failed: "Product submission failed",
+  productName: "Product name",
+  requiresToken: "Production writes require ADMIN_TOKEN.",
+  submitting: "Submitting product...",
+  success: "Product is now tracked. Refresh to see it in the archive.",
+  trackUrl: "Track URL"
+};
+
+const zhCopy = {
+  adminToken: "本地写入用 Admin Token",
+  category: "类别",
+  failed: "产品提交失败",
+  productName: "产品名称",
+  requiresToken: "生产写入需要 ADMIN_TOKEN。",
+  submitting: "正在提交产品...",
+  success: "产品已加入追踪。刷新页面后可在档案中查看。",
+  trackUrl: "追踪 URL"
+};

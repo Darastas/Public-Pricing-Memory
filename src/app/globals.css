@@ -98,7 +98,13 @@ textarea {
     background 140ms ease,
     border-color 140ms ease,
     color 140ms ease,
-    transform 140ms ease;
+  transform 140ms ease;
+}
+
+.button svg,
+.badge svg,
+.language-switcher svg {
+  flex-shrink: 0;
 }
 
 .button:hover {
@@ -125,9 +131,16 @@ textarea {
   padding: 5px 9px;
   font-size: 12px;
   font-weight: 650;
-  line-height: 1;
+  line-height: 1.15;
   color: var(--muted);
-  white-space: nowrap;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
 }
 
 .severity-high {
@@ -153,6 +166,11 @@ textarea {
   border-collapse: collapse;
 }
 
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .data-table th,
 .data-table td {
   border-bottom: 1px solid var(--border);
@@ -166,14 +184,86 @@ textarea {
   font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .data-table tr:last-child td {
   border-bottom: 0;
 }
 
+.catalog-heading {
+  display: grid;
+  gap: 18px;
+}
+
+.catalog-filter-form {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.8fr) minmax(132px, 0.7fr) minmax(220px, 1.2fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.catalog-filter-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.catalog-filter-form label > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.catalog-table {
+  min-width: 960px;
+}
+
+.language-switcher {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #ffffff;
+  padding: 3px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.language-option {
+  border-radius: 999px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.language-option[aria-current="page"] {
+  background: var(--accent);
+  color: #ffffff;
+}
+
 .timeline-line {
   background: linear-gradient(var(--border), var(--border)) 10px 0 / 1px 100% no-repeat;
+}
+
+@media (min-width: 900px) {
+  .catalog-heading {
+    grid-template-columns: 0.9fr 1.1fr;
+    align-items: end;
+  }
+}
+
+@media (max-width: 900px) {
+  .catalog-filter-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .catalog-filter-form button {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 760px) {
@@ -181,9 +271,21 @@ textarea {
     width: min(100vw - 24px, 1180px);
   }
 
-  .data-table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
+  .data-table:not(.catalog-table) {
+    min-width: 760px;
+  }
+}
+
+@media (max-width: 560px) {
+  .catalog-filter-form {
+    grid-template-columns: 1fr;
+  }
+
+  .language-switcher {
+    gap: 2px;
+  }
+
+  .language-switcher svg {
+    display: none;
   }
 }

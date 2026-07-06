@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   Activity,
   ArrowRight,
+  BadgeCheck,
   CircleAlert,
   Clock3,
   Search,
@@ -9,20 +10,44 @@ import {
   Sparkles
 } from "lucide-react";
 import { ProductSubmitForm } from "@/components/product-submit-form";
-import { serializePricingPlan } from "@/lib/api/serialize";
+import { catalogKinds, catalogProducts, catalogRegions, type CatalogKind, type CatalogRegion } from "@/config/pricing-catalog";
 import { seedProducts } from "@/config/seed-products";
+import {
+  filterCatalogProducts,
+  getRegionLabel,
+  getRepresentativePrice,
+  type CatalogKindFilter
+} from "@/lib/catalog/filters";
+import { serializePricingPlan } from "@/lib/api/serialize";
+import { dictionary, getLocale, withLocaleHref, type Locale } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime, formatPrice, severityLabel } from "@/lib/ui/format";
 
 export const dynamic = "force-dynamic";
 
+type HomeSearchParams = {
+  q?: string | string[];
+  lang?: string | string[];
+  kind?: string | string[];
+  region?: string | string[];
+};
+
 export default async function Home({
   searchParams
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<HomeSearchParams>;
 }) {
-  const { q } = await searchParams;
-  const query = q?.trim();
+  const rawSearchParams = await searchParams;
+  const locale = getLocale(rawSearchParams);
+  const t = dictionary[locale];
+  const query = firstParam(rawSearchParams.q)?.trim();
+  const catalogKind = parseCatalogKind(firstParam(rawSearchParams.kind));
+  const catalogRegion = parseCatalogRegion(firstParam(rawSearchParams.region));
+  const catalogRows = filterCatalogProducts(catalogProducts, {
+    kind: catalogKind,
+    region: catalogRegion,
+    query: query ?? ""
+  });
   const { products, changes, crawlJobs, databaseError } = await loadHomeData(query);
   const trackedCount = products.length;
   const latestChange = changes[0];
@@ -35,11 +60,10 @@ export default async function Home({
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h1 className="text-3xl font-[820] leading-tight sm:text-4xl">
-                Searchable memory for public pricing pages.
+                {t.heroTitle}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">
-                Track SaaS, API, AI tool, and developer product price pages with
-                reproducible snapshots, extracted plans, and visible change events.
+                {t.heroDetail}
               </p>
             </div>
             <span className="badge">
@@ -48,6 +72,7 @@ export default async function Home({
             </span>
           </div>
           <form className="mt-6 flex flex-col gap-3 sm:flex-row" action="/">
+            <input name="lang" type="hidden" value={locale} />
             <label className="relative flex-1">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
@@ -57,39 +82,31 @@ export default async function Home({
                 className="field pl-10"
                 defaultValue={query ?? ""}
                 name="q"
-                placeholder="Search products, categories, or slugs"
+                placeholder={t.searchPlaceholder}
               />
             </label>
             <button className="button button-primary" type="submit">
               <Search size={16} />
-              Search
+              {t.search}
             </button>
           </form>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <Metric icon={<Server size={17} />} label="Tracked products" value={trackedCount} />
-            <Metric
-              icon={<Activity size={17} />}
-              label="Recent events"
-              value={changes.length}
-            />
-            <Metric
-              icon={<CircleAlert size={17} />}
-              label="Recent crawl failures"
-              value={failedJobs}
-            />
+            <Metric icon={<Server size={17} />} label={t.trackedProducts} value={trackedCount} />
+            <Metric icon={<Activity size={17} />} label={t.recentEvents} value={changes.length} />
+            <Metric icon={<CircleAlert size={17} />} label={t.recentCrawlFailures} value={failedJobs} />
           </div>
         </div>
 
         <aside className="panel p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg font-[780]">Submit a pricing URL</h2>
+            <h2 className="text-lg font-[780]">{t.submittedUrl}</h2>
             <span className="badge">local/admin</span>
           </div>
           <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
-            Add a product to the archive and trigger crawls from the admin surface.
+            {t.submittedUrlDetail}
           </p>
           <div className="mt-5">
-            <ProductSubmitForm />
+            <ProductSubmitForm locale={locale} />
           </div>
         </aside>
       </section>
@@ -97,15 +114,159 @@ export default async function Home({
       {databaseError ? (
         <section className="shell pb-5">
           <div className="rounded-[8px] border border-[rgba(168,102,20,0.25)] bg-[rgba(168,102,20,0.08)] p-4 text-sm text-[var(--amber)]">
-            Database unavailable: showing configured seed products only. {databaseError}
+            {t.databaseUnavailableSeed} {databaseError}
           </div>
         </section>
       ) : null}
 
+      <section className="shell pb-8" id="catalog">
+        <div className="panel overflow-hidden">
+          <div className="catalog-heading border-b border-[var(--border)] p-5 sm:p-6">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-[800]">{t.pricingDirectory}</h2>
+                <span className="badge severity-low">
+                  <BadgeCheck size={14} />
+                  {t.verifiedCatalog}
+                </span>
+              </div>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-[var(--muted)]">
+                {t.pricingDirectoryDetail}
+              </p>
+            </div>
+            <form className="catalog-filter-form" action="/">
+              <input name="lang" type="hidden" value={locale} />
+              <label>
+                <span>{t.category}</span>
+                <select className="field" defaultValue={catalogKind} name="kind">
+                  <option value="all">{t.allCategories}</option>
+                  {catalogKinds.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {catalogKindLabel(kind, locale)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{t.region}</span>
+                <select className="field" defaultValue={catalogRegion} name="region">
+                  {catalogRegions.map((region) => (
+                    <option key={region} value={region}>
+                      {region === "global" ? t.allRegions : getRegionLabel(region, locale)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>{t.searchCatalog}</span>
+                <input
+                  className="field"
+                  defaultValue={query ?? ""}
+                  name="q"
+                  placeholder={t.searchPlaceholder}
+                />
+              </label>
+              <button className="button button-primary" type="submit">
+                <Search size={16} />
+                {t.search}
+              </button>
+            </form>
+          </div>
+          <div className="table-wrap">
+            <table className="data-table catalog-table">
+              <thead>
+                <tr>
+                  <th>{t.product}</th>
+                  <th>{t.category}</th>
+                  <th>{t.region}</th>
+                  <th>{t.price}</th>
+                  <th>{t.officialSourceStatus}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {catalogRows.length ? (
+                  catalogRows.map((product) => {
+                    const price = getRepresentativePrice(product);
+                    return (
+                      <tr key={product.slug}>
+                        <td>
+                          <Link
+                            className="font-[760] hover:text-[var(--accent)]"
+                            href={withLocaleHref(`/products/${product.slug}`, locale)}
+                          >
+                            {product.displayName[locale]}
+                          </Link>
+                          <div className="mt-1 text-xs font-semibold text-[var(--muted)]">
+                            {product.name}
+                          </div>
+                        </td>
+                        <td>
+                          <span className="badge">{catalogKindLabel(product.category, locale)}</span>
+                        </td>
+                        <td>
+                          <div className="badge-row max-w-[280px]">
+                            {product.regions.map((region) => (
+                              <span className="badge" key={region}>
+                                {getRegionLabel(region, locale)}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="max-w-[320px] text-sm font-semibold">
+                          {price?.rawText ?? "-"}
+                          {price?.label ? (
+                            <span className="mt-1 block text-xs font-medium text-[var(--muted)]">
+                              {price.label[locale]}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td>
+                          {price ? (
+                            <a
+                              className={`badge ${statusClass(price.status)}`}
+                              href={price.sourceUrl}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              {priceStatusLabel(price.status, locale)}
+                            </a>
+                          ) : null}
+                          {price ? (
+                            <div className="mt-1 text-xs text-[var(--muted)]">
+                              {price.sourceLabel} · {price.lastCheckedAt}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td>
+                          <Link
+                            className="button button-secondary"
+                            href={withLocaleHref(`/products/${product.slug}`, locale)}
+                          >
+                            {t.open}
+                            <ArrowRight size={15} />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={6}>
+                      <EmptyState title={t.noCatalogMatches} detail={t.seedProductsInstruction} />
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <section className="shell grid gap-5 pb-8 lg:grid-cols-[0.95fr_1.05fr]" id="changes">
         <div className="panel p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-[800]">Recent price memory</h2>
+            <h2 className="text-xl font-[800]">{t.recentPriceMemory}</h2>
             {latestChange ? (
               <span className={`badge severity-${latestChange.severity}`}>
                 {severityLabel(latestChange.severity)}
@@ -117,7 +278,7 @@ export default async function Home({
               changes.map((change) => (
                 <Link
                   className="grid grid-cols-[22px_1fr] gap-3 rounded-[8px] p-2 hover:bg-[var(--surface-subtle)]"
-                  href={`/products/${change.product.slug}`}
+                  href={withLocaleHref(`/products/${change.product.slug}`, locale)}
                   key={change.id}
                 >
                   <span
@@ -140,27 +301,27 @@ export default async function Home({
                 </Link>
               ))
             ) : (
-              <EmptyState title="No changes yet" detail="Seed products, run a crawl, then changes will appear here." />
+              <EmptyState title={t.noChangesYet} detail={t.seedProductsInstruction} />
             )}
           </div>
         </div>
 
         <div className="panel p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-[800]">Recent crawl status</h2>
+            <h2 className="text-xl font-[800]">{t.crawlStatus}</h2>
             <span className="badge">
               <Clock3 size={14} />
-              last runs
+              {t.latestRuns}
             </span>
           </div>
-          <div className="mt-5 overflow-hidden rounded-[8px] border border-[var(--border)]">
+          <div className="table-wrap mt-5 rounded-[8px] border border-[var(--border)]">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Product</th>
-                  <th>Status</th>
-                  <th>Started</th>
-                  <th>Message</th>
+                  <th>{t.product}</th>
+                  <th>{t.status}</th>
+                  <th>{t.started}</th>
+                  <th>{t.message}</th>
                 </tr>
               </thead>
               <tbody>
@@ -185,14 +346,14 @@ export default async function Home({
                         {formatDateTime(job.startedAt ?? job.createdAt)}
                       </td>
                       <td className="max-w-[280px] text-sm text-[var(--muted)]">
-                        {job.errorMessage ?? "No error recorded"}
+                        {job.errorMessage ?? t.noErrorRecorded}
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
                     <td colSpan={4}>
-                      <EmptyState title="No crawl jobs" detail="Manual and scheduled crawls will be listed here." />
+                      <EmptyState title={t.noCrawlJobs} detail={t.runCrawlInstruction} />
                     </td>
                   </tr>
                 )}
@@ -206,96 +367,101 @@ export default async function Home({
         <div className="panel overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] p-5 sm:p-6">
             <div>
-              <h2 className="text-xl font-[800]">Tracked products</h2>
+              <h2 className="text-xl font-[800]">{t.trackedProducts}</h2>
               <p className="mt-1 text-sm text-[var(--muted)]">
-                Current plan extraction, latest snapshot state, and change count.
+                {t.trackedProductsDetail}
               </p>
             </div>
-            <Link className="button button-secondary" href="/admin">
-              Admin
+            <Link className="button button-secondary" href={withLocaleHref("/admin", locale)}>
+              {t.admin}
               <ArrowRight size={16} />
             </Link>
           </div>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Current plans</th>
-                <th>Latest snapshot</th>
-                <th>Changes</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {products.length ? (
-                products.map((product) => {
-                  const latestSnapshot = product.snapshots[0];
-                  const plans =
-                    latestSnapshot?.pricingPlans.map(serializePricingPlan) ?? [];
-                  return (
-                    <tr key={product.id}>
-                      <td>
-                        <Link
-                          className="font-[760] hover:text-[var(--accent)]"
-                          href={`/products/${product.slug}`}
-                        >
-                          {product.name}
-                        </Link>
-                        <div className="mt-1 text-xs font-semibold text-[var(--muted)]">
-                          {product.category} · {product.status}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="flex max-w-[360px] flex-wrap gap-2">
-                          {plans.length ? (
-                            plans.slice(0, 4).map((plan) => (
-                              <span className="badge" key={plan.name}>
-                                {plan.name}: {formatPrice(plan)}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-sm text-[var(--muted)]">
-                              No plans extracted
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        {latestSnapshot ? (
-                          <span>
-                            <span className="block text-sm font-semibold">
-                              {latestSnapshot.extractionStatus}
-                            </span>
-                            <span className="text-xs text-[var(--muted)]">
-                              {formatDateTime(latestSnapshot.fetchedAt)}
-                            </span>
-                          </span>
-                        ) : (
-                          <span className="text-sm text-[var(--muted)]">Never crawled</span>
-                        )}
-                      </td>
-                      <td className="font-semibold">{product._count.changes}</td>
-                      <td>
-                        <Link className="button button-secondary" href={`/products/${product.slug}`}>
-                          Open
-                          <ArrowRight size={15} />
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <td colSpan={5}>
-                    <EmptyState
-                      title={query ? "No matching products" : "No products yet"}
-                      detail="Seed the initial products or submit a new pricing URL."
-                    />
-                  </td>
+                  <th>{t.product}</th>
+                  <th>{t.currentPlans}</th>
+                  <th>{t.latestSnapshot}</th>
+                  <th>{t.changes}</th>
+                  <th />
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {products.length ? (
+                  products.map((product) => {
+                    const latestSnapshot = product.snapshots[0];
+                    const plans =
+                      latestSnapshot?.pricingPlans.map(serializePricingPlan) ?? [];
+                    return (
+                      <tr key={product.id}>
+                        <td>
+                          <Link
+                            className="font-[760] hover:text-[var(--accent)]"
+                            href={withLocaleHref(`/products/${product.slug}`, locale)}
+                          >
+                            {product.name}
+                          </Link>
+                          <div className="mt-1 text-xs font-semibold text-[var(--muted)]">
+                            {product.category} · {product.status}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="badge-row max-w-[360px]">
+                            {plans.length ? (
+                              plans.slice(0, 4).map((plan) => (
+                                <span className="badge" key={plan.name}>
+                                  {plan.name}: {formatPrice(plan)}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-sm text-[var(--muted)]">
+                                {t.noPlansExtracted}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          {latestSnapshot ? (
+                            <span>
+                              <span className="block text-sm font-semibold">
+                                {latestSnapshot.extractionStatus}
+                              </span>
+                              <span className="text-xs text-[var(--muted)]">
+                                {formatDateTime(latestSnapshot.fetchedAt)}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-sm text-[var(--muted)]">{t.neverCrawled}</span>
+                          )}
+                        </td>
+                        <td className="font-semibold">{product._count.changes}</td>
+                        <td>
+                          <Link
+                            className="button button-secondary"
+                            href={withLocaleHref(`/products/${product.slug}`, locale)}
+                          >
+                            {t.open}
+                            <ArrowRight size={15} />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={5}>
+                      <EmptyState
+                        title={query ? t.noMatchingProducts : t.noProductsYet}
+                        detail={t.seedProductsInstruction}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </main>
@@ -329,6 +495,51 @@ function EmptyState({ title, detail }: { title: string; detail: string }) {
       <p className="mt-1 text-sm text-[var(--muted)]">{detail}</p>
     </div>
   );
+}
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function parseCatalogKind(value: string | undefined): CatalogKindFilter {
+  if (value && (catalogKinds as readonly string[]).includes(value)) {
+    return value as CatalogKind;
+  }
+
+  return "all";
+}
+
+function parseCatalogRegion(value: string | undefined): CatalogRegion {
+  if (value && (catalogRegions as readonly string[]).includes(value)) {
+    return value as CatalogRegion;
+  }
+
+  return "global";
+}
+
+function catalogKindLabel(kind: CatalogKind, locale: Locale): string {
+  const t = dictionary[locale];
+  const labels: Record<CatalogKind, string> = {
+    ai_api: t.aiApi,
+    ai_subscription: t.aiSubscriptions,
+    consumer_subscription: t.consumerSubscriptions,
+    developer_subscription: t.developerSubscriptions
+  };
+
+  return labels[kind];
+}
+
+function priceStatusLabel(status: string, locale: Locale): string {
+  const t = dictionary[locale];
+  if (status === "published") return t.published;
+  if (status === "not_published") return t.notPublished;
+  return t.needsReview;
+}
+
+function statusClass(status: string): string {
+  if (status === "published") return "severity-low";
+  if (status === "not_published") return "severity-medium";
+  return "severity-medium";
 }
 
 function severityDotClass(severity: string): string {
