@@ -77,6 +77,24 @@ STORAGE_SECRET_KEY=
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=
 ```
 
+`.env` 配置示例：
+
+```dotenv
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/public_pricing_memory?schema=public&connect_timeout=5"
+ADMIN_TOKEN="replace-with-a-local-admin-token"
+CRON_SECRET="replace-with-a-cron-secret"
+
+# Optional. Core functionality does not depend on LLM keys.
+OPENAI_API_KEY=""
+ANTHROPIC_API_KEY=""
+STORAGE_BUCKET=""
+STORAGE_ACCESS_KEY=""
+STORAGE_SECRET_KEY=""
+
+# Optional. Use this only when the default Playwright browser cache is unavailable.
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=""
+```
+
 核心抓取、提取、diff 和事件生成不依赖 LLM key。
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 只在默认 Playwright 浏览器不可用、但系统已安装 Chromium/Edge/Chrome 时需要。
 

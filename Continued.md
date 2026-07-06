@@ -84,6 +84,9 @@
    - 新增 `README.zh-CN.md`
    - 原 `README.md` 顶部增加中文版入口
    - 中文版覆盖产品定位、功能、环境变量、数据库、seed、抓取、API、cron、部署、验证、限制和 Roadmap
+18. README 环境变量示例：
+   - `README.md` 和 `README.zh-CN.md` 的环境变量章节新增可复制 `.env` 示例
+   - 示例只使用本地连接串和占位 Token，不包含真实密钥
 
 ## 当前验证结果
 
