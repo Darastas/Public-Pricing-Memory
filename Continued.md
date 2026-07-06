@@ -14,6 +14,7 @@
 2. HTTP fetcher：
    - `src/lib/crawler/fetcher.ts`
    - 支持 HTTP 状态、最终 URL、网络错误和超时
+   - 静态 HTML 无可提取文本或明确要求 JavaScript 时，会尝试 Playwright 渲染 fallback
 3. Prisma repository：
    - `src/lib/crawler/prisma-repository.ts`
    - 将 crawler 抽象接口接到 Prisma 模型
@@ -60,6 +61,12 @@
    - 重新提取会替换目标快照的 PricingPlan，更新 extraction 状态，并重建该快照对应的 ChangeEvent
    - 新增受保护 API：`POST /api/snapshots/[snapshotId]/reextract`
    - admin 页会列出最近快照并提供 Re-extract 操作
+13. Playwright 动态页面抓取 fallback：
+   - `src/lib/crawler/playwright-renderer.ts`
+   - `src/lib/crawler/fetcher.ts`
+   - HTTP 成功但静态 HTML 没有有效文本，或页面提示需要 JavaScript 时，抓取器会尝试 Playwright 渲染
+   - fallback 失败时保留原始 HTTP fetch 结果，并把失败原因写入 `errorMessage`
+   - 可选环境变量：`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`
 
 ## 当前验证结果
 
@@ -76,7 +83,7 @@ npm run build
 
 ```text
 Test Files  14 passed (14)
-Tests       33 passed (33)
+Tests       35 passed (35)
 ```
 
 当前新增验证：
@@ -161,13 +168,12 @@ npm run build
 
 1. 还没有对象存储实现：
    - 目前仍以数据库字段保存原始 HTML。
-2. 还没有 Playwright 动态页面抓取 fallback：
-   - 当前 fetcher 使用 HTTP fetch。
-3. 还没有保存截图：
+2. 还没有保存截图：
    - schema 保留了 `screenshotStorageKey`。
-4. 真实页面启发式提取仍需打磨：
+3. 真实页面启发式提取仍需打磨：
    - Anthropic 可以成功提取套餐，但部分价格/免费层归类仍偏粗糙。
-5. 还没有覆盖所有 API route 的独立 route handler 测试。
+4. 还没有覆盖所有 API route 的独立 route handler 测试。
+5. Playwright fallback 不处理登录、CAPTCHA 或强反爬页面。
 
 ## 下一步建议
 
@@ -183,4 +189,4 @@ npm run build
 2. 后续优先事项：
    - 打磨真实 pricing page 套餐/价格提取准确性。
    - 增加更多 API route 测试。
-   - 增加 Playwright 动态页面抓取 fallback。
+   - 增加截图保存或对象存储落地。

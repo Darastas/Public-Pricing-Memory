@@ -72,9 +72,11 @@ ANTHROPIC_API_KEY=
 STORAGE_BUCKET=
 STORAGE_ACCESS_KEY=
 STORAGE_SECRET_KEY=
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=
 ```
 
 核心抓取、提取、diff 和事件生成不依赖 LLM key。
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 只在默认 Playwright 浏览器不可用、但系统已安装 Chromium/Edge/Chrome 时需要。
 
 ## 数据库初始化
 
@@ -132,6 +134,8 @@ curl -X POST \
 ```bash
 npm run crawl:all -- --limit=3
 ```
+
+抓取器先使用普通 HTTP fetch。若价格页 HTTP 成功但静态 HTML 没有可提取文本，或页面明确要求 JavaScript，抓取器会自动尝试 Playwright 渲染 fallback；fallback 失败时会保留原始 fetch 结果并记录错误信息。
 
 ## API
 
@@ -205,14 +209,13 @@ npm run build
 
 - MVP 将原始 HTML 存在数据库字段中；对象存储 adapter 已预留，但还未接 S3/R2。
 - 价格提取是确定性启发式，适合第一版，但还需要更多真实页面 fixture 扩展。
-- 动态渲染或反爬强的价格页可能需要后续接 Playwright 页面抓取。
+- 动态渲染价格页已接 Playwright fallback；反爬强、登录后或 CAPTCHA 页面仍可能无法抓取。
 - 当前没有队列系统；cron 和手动 API 会同步执行抓取。
 - 没有实现截图保存，只保留了 `screenshotStorageKey` 字段。
 
 ## Roadmap
 
 - 增加更多真实 pricing page fixtures。
-- 加入 Playwright fallback 抓取动态价格页。
 - 接入对象存储保存原始 HTML 和截图。
 - 增加队列和重试策略。
 - 为 ChangeEvent 增加更细的套餐重命名检测。

@@ -33,6 +33,48 @@ describe("crawler fetcher", () => {
     });
   });
 
+  it("uses a rendered fallback when the static HTML has no meaningful text", async () => {
+    const fetchPage = createFetchPage({
+      fetchImpl: async () => ({
+        status: 200,
+        url: "https://example.com/pricing",
+        text: async () =>
+          "<html><body><div id=\"app\"></div><script>renderPricing()</script></body></html>"
+      }),
+      renderPage: async (url) => ({
+        finalUrl: `${url}?rendered=1`,
+        httpStatus: 200,
+        html: "<main><h1>Pricing</h1><h2>Pro</h2><p>$20/mo</p></main>"
+      })
+    });
+
+    await expect(fetchPage("https://example.com/pricing")).resolves.toEqual({
+      finalUrl: "https://example.com/pricing?rendered=1",
+      httpStatus: 200,
+      html: "<main><h1>Pricing</h1><h2>Pro</h2><p>$20/mo</p></main>"
+    });
+  });
+
+  it("keeps the static fetch result when the rendered fallback fails", async () => {
+    const fetchPage = createFetchPage({
+      fetchImpl: async () => ({
+        status: 200,
+        url: "https://example.com/pricing",
+        text: async () => "<html><body><div id=\"app\"></div></body></html>"
+      }),
+      renderPage: async () => {
+        throw new Error("Browser executable missing");
+      }
+    });
+
+    await expect(fetchPage("https://example.com/pricing")).resolves.toEqual({
+      finalUrl: "https://example.com/pricing",
+      httpStatus: 200,
+      html: "<html><body><div id=\"app\"></div></body></html>",
+      errorMessage: "Rendered fallback failed: Browser executable missing"
+    });
+  });
+
   it("aborts requests that exceed the configured timeout", async () => {
     const fetchPage = createFetchPage({
       timeoutMs: 1,
